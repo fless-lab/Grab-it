@@ -1,5 +1,6 @@
 package com.raouf.grabit.data.downloader
 
+import android.util.Log
 import com.raouf.grabit.GrabitApp
 import com.raouf.grabit.domain.model.VideoFormat
 import com.raouf.grabit.domain.model.VideoInfo
@@ -14,18 +15,47 @@ import javax.inject.Singleton
 @Singleton
 class VideoExtractor @Inject constructor() {
 
+    companion object {
+        private const val TAG = "VideoExtractor"
+    }
+
     suspend fun extract(url: String): VideoInfo = withContext(Dispatchers.IO) {
-        // Wait for yt-dlp to be initialized
         val ready = GrabitApp.ytdlReady.await()
         if (!ready) throw Exception("yt-dlp failed to initialize")
+
+        Log.d(TAG, "Extracting info for: $url")
 
         val request = YoutubeDLRequest(url)
         request.addOption("--dump-json")
         request.addOption("--no-download")
         request.addOption("--no-playlist")
+        request.addOption("--no-check-certificates")
 
-        val response = YoutubeDL.getInstance().execute(request)
-        val json = com.google.gson.JsonParser.parseString(response.out).asJsonObject
+        val response = try {
+            YoutubeDL.getInstance().execute(request)
+        } catch (e: Exception) {
+            Log.e(TAG, "yt-dlp execute failed: ${e.message}", e)
+            throw Exception("Download failed: ${e.message}")
+        }
+
+        val stdout = response.out
+        val stderr = response.err
+
+        Log.d(TAG, "stdout length: ${stdout?.length ?: 0}")
+        Log.d(TAG, "stderr: ${stderr?.take(500)}")
+
+        if (stdout.isNullOrBlank()) {
+            val errorMsg = stderr?.takeIf { it.isNotBlank() } ?: "No response from yt-dlp"
+            Log.e(TAG, "Empty stdout. stderr: $errorMsg")
+            throw Exception(errorMsg)
+        }
+
+        val json = try {
+            com.google.gson.JsonParser.parseString(stdout).asJsonObject
+        } catch (e: Exception) {
+            Log.e(TAG, "JSON parse failed. stdout: ${stdout.take(200)}", e)
+            throw Exception("Failed to parse video info")
+        }
 
         val title = json.get("title")?.asString ?: "Untitled"
         val thumbnail = json.get("thumbnail")?.asString
@@ -33,43 +63,8 @@ class VideoExtractor @Inject constructor() {
         val uploader = json.get("uploader")?.asString
         val source = VideoSource.fromUrl(url)
 
-        val formats = mutableListOf<VideoFormat>()
-        val formatsJson = json.getAsJsonArray("formats")
-        if (formatsJson != null) {
-            // Collect best video formats by resolution
-            val seen = mutableSetOf<String>()
-            for (f in formatsJson) {
-                val obj = f.asJsonObject
-                val ext = obj.get("ext")?.asString ?: continue
-                val height = obj.get("height")?.asInt
-                val acodec = obj.get("acodec")?.asString ?: "none"
-                val vcodec = obj.get("vcodec")?.asString ?: "none"
-                val filesize = obj.get("filesize")?.asLong
+        Log.d(TAG, "Extracted: $title (${source.displayName})")
 
-                val isAudioOnly = vcodec == "none" && acodec != "none"
-                val quality = when {
-                    isAudioOnly -> "Audio"
-                    height != null -> "${height}p"
-                    else -> continue
-                }
-
-                val key = "$quality-$ext"
-                if (key in seen) continue
-                seen.add(key)
-
-                formats.add(
-                    VideoFormat(
-                        formatId = obj.get("format_id")?.asString ?: "",
-                        ext = ext,
-                        quality = quality,
-                        filesize = filesize,
-                        isAudioOnly = isAudioOnly,
-                    )
-                )
-            }
-        }
-
-        // Always add "best" and "audio" options
         val standardFormats = mutableListOf(
             VideoFormat("best", "mp4", "Best", null, false),
             VideoFormat("best[height<=720]", "mp4", "720p", null, false),
@@ -88,7 +83,6 @@ class VideoExtractor @Inject constructor() {
         )
     }
 
-    /** Quick check: is this a URL we can likely handle? */
     fun isSupportedUrl(url: String): Boolean {
         val lower = url.lowercase()
         return lower.startsWith("http://") || lower.startsWith("https://")

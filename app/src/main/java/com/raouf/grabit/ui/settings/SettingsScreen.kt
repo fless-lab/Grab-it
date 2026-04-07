@@ -102,7 +102,7 @@ fun SettingsScreen(
                 )
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Download folder", style = MaterialTheme.typography.titleMedium)
+                    Text("Download folder", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
                     Text(
                         text = if (downloadDir != null) {
                             Uri.parse(downloadDir).lastPathSegment ?: "Selected"

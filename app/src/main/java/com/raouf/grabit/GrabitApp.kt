@@ -1,8 +1,8 @@
 package com.raouf.grabit
 
 import android.app.Application
+import android.util.Log
 import com.yausername.youtubedl_android.YoutubeDL
-import com.yausername.youtubedl_android.YoutubeDLException
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -16,7 +16,7 @@ class GrabitApp : Application() {
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     companion object {
-        /** Await this before using YoutubeDL */
+        private const val TAG = "GrabitApp"
         val ytdlReady = CompletableDeferred<Boolean>()
     }
 
@@ -25,17 +25,22 @@ class GrabitApp : Application() {
 
         appScope.launch {
             try {
+                Log.d(TAG, "Initializing yt-dlp...")
                 YoutubeDL.getInstance().init(this@GrabitApp)
+                Log.d(TAG, "yt-dlp initialized successfully")
                 ytdlReady.complete(true)
-            } catch (e: YoutubeDLException) {
-                e.printStackTrace()
+            } catch (e: Exception) {
+                Log.e(TAG, "yt-dlp init failed: ${e.message}", e)
                 ytdlReady.complete(false)
             }
 
             // Try to update extractors (non-blocking)
             try {
                 YoutubeDL.getInstance().updateYoutubeDL(this@GrabitApp)
-            } catch (_: Exception) { }
+                Log.d(TAG, "yt-dlp updated")
+            } catch (e: Exception) {
+                Log.w(TAG, "yt-dlp update skipped: ${e.message}")
+            }
         }
     }
 }

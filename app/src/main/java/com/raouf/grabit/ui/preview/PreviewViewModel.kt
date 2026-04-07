@@ -33,7 +33,10 @@ class PreviewViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,
 ) : ViewModel() {
 
-    private val url: String = savedStateHandle.get<String>("url") ?: ""
+    private val url: String = run {
+        val raw = savedStateHandle.get<String>("url") ?: ""
+        try { java.net.URLDecoder.decode(raw, "UTF-8") } catch (_: Exception) { raw }
+    }
 
     private val _state = MutableStateFlow(PreviewState())
     val state = _state.asStateFlow()
