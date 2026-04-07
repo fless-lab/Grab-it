@@ -30,7 +30,9 @@ jobs:
         env:
           GRABIT_KS_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
           GRABIT_KEY_PASS: ${{ secrets.KEY_PASSWORD }}
-        run: ./gradlew assembleRelease
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease
 
       - name: Get version name
         id: version
