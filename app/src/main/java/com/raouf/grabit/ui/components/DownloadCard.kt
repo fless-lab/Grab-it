@@ -34,7 +34,6 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.raouf.grabit.domain.model.Download
 import com.raouf.grabit.domain.model.DownloadStatus
-import com.raouf.grabit.ui.theme.MintAccent
 import com.raouf.grabit.ui.theme.StatusError
 
 @Composable
@@ -124,14 +123,14 @@ fun DownloadCard(
                             .fillMaxWidth(animatedProgress.coerceIn(0f, 1f))
                             .height(3.dp)
                             .clip(RoundedCornerShape(1.5.dp))
-                            .background(MintAccent),
+                            .background(MaterialTheme.colorScheme.primary),
                     )
                 }
                 Spacer(Modifier.height(2.dp))
                 Text(
                     text = "${(animatedProgress * 100).toInt()}%",
                     style = MaterialTheme.typography.labelSmall,
-                    color = MintAccent,
+                    color = MaterialTheme.colorScheme.primary,
                 )
             }
         }
@@ -140,7 +139,7 @@ fun DownloadCard(
 
         // Status icon
         val (icon, tint) = when (download.status) {
-            DownloadStatus.COMPLETED -> Icons.Rounded.CheckCircle to MintAccent
+            DownloadStatus.COMPLETED -> Icons.Rounded.CheckCircle to MaterialTheme.colorScheme.primary
             DownloadStatus.FAILED -> Icons.Rounded.Error to StatusError
             DownloadStatus.PAUSED -> Icons.Rounded.Pause to MaterialTheme.colorScheme.onSurfaceVariant
             else -> null to null

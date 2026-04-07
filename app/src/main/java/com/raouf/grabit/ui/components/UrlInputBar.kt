@@ -25,7 +25,6 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import com.raouf.grabit.ui.theme.MintAccent
 
 @Composable
 fun UrlInputBar(
@@ -69,7 +68,7 @@ fun UrlInputBar(
             textStyle = MaterialTheme.typography.bodyMedium.copy(
                 color = MaterialTheme.colorScheme.onSurface,
             ),
-            cursorBrush = SolidColor(MintAccent),
+            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
             keyboardActions = KeyboardActions(onGo = { onSubmit() }),
             decorationBox = { inner ->
@@ -93,7 +92,7 @@ fun UrlInputBar(
             Icon(
                 imageVector = Icons.Rounded.Download,
                 contentDescription = "Download",
-                tint = if (url.isNotBlank()) MintAccent else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                tint = if (url.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
                 modifier = Modifier.size(20.dp),
             )
         }

@@ -31,7 +31,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -40,7 +44,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.raouf.grabit.domain.model.Download
 import com.raouf.grabit.ui.components.DownloadCard
 import com.raouf.grabit.ui.components.UrlInputBar
-import com.raouf.grabit.ui.theme.MintAccent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,6 +63,15 @@ fun HomeScreen(
         HomeTab.ALL -> allDownloads
         HomeTab.ACTIVE -> activeDownloads
         HomeTab.COMPLETED -> completedDownloads
+    }
+
+    var urlInput by remember { mutableStateOf("") }
+
+    // Pre-fill from share intent
+    LaunchedEffect(urlFromIntent) {
+        if (!urlFromIntent.isNullOrBlank()) {
+            urlInput = urlFromIntent
+        }
     }
 
     Column(
@@ -92,11 +104,13 @@ fun HomeScreen(
         // URL input
         Box(modifier = Modifier.padding(horizontal = 16.dp)) {
             UrlInputBar(
-                url = urlFromIntent ?: "",
-                onUrlChange = { /* handled by state hoisting in parent */ },
+                url = urlInput,
+                onUrlChange = { urlInput = it },
                 onSubmit = {
-                    val u = urlFromIntent ?: ""
-                    if (u.isNotBlank()) onNavigateToPreview(u)
+                    if (urlInput.isNotBlank()) {
+                        onNavigateToPreview(urlInput)
+                        urlInput = ""
+                    }
                 },
             )
         }
@@ -112,7 +126,7 @@ fun HomeScreen(
             indicator = { tabPositions ->
                 TabRowDefaults.SecondaryIndicator(
                     modifier = Modifier.tabIndicatorOffset(tabPositions[currentTab.ordinal]),
-                    color = MintAccent,
+                    color = MaterialTheme.colorScheme.primary,
                     height = 2.dp,
                 )
             },

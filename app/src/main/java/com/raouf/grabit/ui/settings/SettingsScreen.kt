@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -36,7 +37,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.raouf.grabit.ui.theme.MintAccent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -98,7 +98,7 @@ fun SettingsScreen(
                 Icon(
                     Icons.Rounded.Folder,
                     null,
-                    tint = MintAccent,
+                    tint = MaterialTheme.colorScheme.primary,
                 )
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -112,7 +112,7 @@ fun SettingsScreen(
                     )
                 }
                 TextButton(onClick = { dirPicker.launch(null) }) {
-                    Text(if (downloadDir != null) "Change" else "Select", color = MintAccent)
+                    Text(if (downloadDir != null) "Change" else "Select", color = MaterialTheme.colorScheme.primary)
                 }
             }
 
@@ -201,7 +201,11 @@ private fun SettingToggle(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
+            Text(
+                title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
             Text(
                 subtitle,
                 style = MaterialTheme.typography.bodySmall,
@@ -213,8 +217,11 @@ private fun SettingToggle(
             checked = checked,
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
-                checkedTrackColor = MintAccent,
-                checkedThumbColor = MaterialTheme.colorScheme.background,
+                checkedTrackColor = MaterialTheme.colorScheme.primary,
+                checkedThumbColor = Color.White,
+                uncheckedTrackColor = MaterialTheme.colorScheme.outline,
+                uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                uncheckedBorderColor = MaterialTheme.colorScheme.outline,
             ),
         )
     }

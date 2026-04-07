@@ -33,10 +33,10 @@ private val DarkColorScheme = darkColorScheme(
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = MintAccentDark,
+    primary = MintAccentLight,
     onPrimary = Color.White,
     primaryContainer = MintSubtleLight,
-    onPrimaryContainer = MintAccentDark,
+    onPrimaryContainer = MintAccentLight,
     secondary = LightTextSecondary,
     onSecondary = LightTextPrimary,
     background = LightBackground,

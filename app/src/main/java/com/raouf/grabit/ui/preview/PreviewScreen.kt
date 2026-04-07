@@ -47,8 +47,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.raouf.grabit.domain.model.VideoFormat
-import com.raouf.grabit.ui.theme.MintAccent
-import com.raouf.grabit.ui.theme.MintAccentDark
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -80,7 +78,7 @@ fun PreviewScreen(
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         CircularProgressIndicator(
-                            color = MintAccent,
+                            color = MaterialTheme.colorScheme.primary,
                             strokeWidth = 2.dp,
                             modifier = Modifier.size(32.dp),
                         )
@@ -111,7 +109,7 @@ fun PreviewScreen(
                         )
                         Spacer(Modifier.height(16.dp))
                         TextButton(onClick = { viewModel.retry() }) {
-                            Text("Retry", color = MintAccent)
+                            Text("Retry", color = MaterialTheme.colorScheme.primary)
                         }
                     }
                 }
@@ -123,7 +121,7 @@ fun PreviewScreen(
                         Icon(
                             Icons.Rounded.CheckCircle,
                             null,
-                            tint = MintAccent,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(48.dp),
                         )
                         Spacer(Modifier.height(12.dp))
@@ -139,7 +137,7 @@ fun PreviewScreen(
                         )
                         Spacer(Modifier.height(24.dp))
                         TextButton(onClick = onBack) {
-                            Text("Back to home", color = MintAccent)
+                            Text("Back to home", color = MaterialTheme.colorScheme.primary)
                         }
                     }
                 }
@@ -226,7 +224,7 @@ fun PreviewScreen(
                             .height(52.dp),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = MintAccent,
+                            containerColor = MaterialTheme.colorScheme.primary,
                             contentColor = MaterialTheme.colorScheme.background,
                         ),
                     ) {
@@ -262,7 +260,7 @@ private fun FormatChip(
             .then(
                 if (selected) Modifier
                     .background(MaterialTheme.colorScheme.primaryContainer)
-                    .border(1.dp, MintAccent, shape)
+                    .border(1.dp, MaterialTheme.colorScheme.primary, shape)
                 else Modifier
                     .background(MaterialTheme.colorScheme.surfaceVariant)
             )
@@ -273,7 +271,7 @@ private fun FormatChip(
         Text(
             text = format.quality,
             style = MaterialTheme.typography.labelLarge,
-            color = if (selected) MintAccent else MaterialTheme.colorScheme.onSurfaceVariant,
+            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }

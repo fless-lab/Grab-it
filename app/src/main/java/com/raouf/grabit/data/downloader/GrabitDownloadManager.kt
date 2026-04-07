@@ -49,6 +49,8 @@ class GrabitDownloadManager @Inject constructor(
         onProgress: (Float) -> Unit = {},
     ): Result<String> = withContext(Dispatchers.IO) {
         try {
+            // Ensure yt-dlp is ready
+            com.raouf.grabit.GrabitApp.ytdlReady.await()
             dao.updateProgress(id, DownloadStatus.DOWNLOADING.name, 0f)
 
             val sanitizedTitle = title.replace(Regex("[\\\\/:*?\"<>|]"), "_").take(120)

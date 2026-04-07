@@ -1,5 +1,6 @@
 package com.raouf.grabit.data.downloader
 
+import com.raouf.grabit.GrabitApp
 import com.raouf.grabit.domain.model.VideoFormat
 import com.raouf.grabit.domain.model.VideoInfo
 import com.raouf.grabit.domain.model.VideoSource
@@ -14,6 +15,10 @@ import javax.inject.Singleton
 class VideoExtractor @Inject constructor() {
 
     suspend fun extract(url: String): VideoInfo = withContext(Dispatchers.IO) {
+        // Wait for yt-dlp to be initialized
+        val ready = GrabitApp.ytdlReady.await()
+        if (!ready) throw Exception("yt-dlp failed to initialize")
+
         val request = YoutubeDLRequest(url)
         request.addOption("--dump-json")
         request.addOption("--no-download")

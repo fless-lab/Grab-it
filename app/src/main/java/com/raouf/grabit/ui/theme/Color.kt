@@ -22,11 +22,11 @@ val LightTextPrimary = Color(0xFF12121A)
 val LightTextSecondary = Color(0xFF6E6E7A)
 val LightTextCaption = Color(0xFF9E9EA8)
 
-// Accent (shared)
+// Accent: bright mint for dark mode, deeper green for light mode
 val MintAccent = Color(0xFF5DFCA1)
-val MintAccentDark = Color(0xFF1DB964)
+val MintAccentLight = Color(0xFF16A34A)  // deeper green, easier on eyes in light mode
 val MintSubtle = Color(0xFF1A3D2A)
-val MintSubtleLight = Color(0xFFE8F8EF)
+val MintSubtleLight = Color(0xFFDCFCE7)
 
 // Status
 val StatusError = Color(0xFFFF6B6B)

@@ -76,6 +76,9 @@ dependencies {
     // DataStore
     implementation(libs.datastore)
 
+    // DocumentFile (SAF)
+    implementation(libs.documentfile)
+
     // Image loading
     implementation(libs.coil.compose)
 
