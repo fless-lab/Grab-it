@@ -5,7 +5,6 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -30,7 +29,8 @@ class UserPreferences @Inject constructor(
         val ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
         val APP_LOCK = booleanPreferencesKey("app_lock")
         val HIDE_FROM_GALLERY = booleanPreferencesKey("hide_from_gallery")
-        val SKIPPED_VERSION = intPreferencesKey("skipped_version")
+        val SKIPPED_VERSION_TAG = stringPreferencesKey("skipped_version_tag")
+        val AUTO_UPDATE = booleanPreferencesKey("auto_update")
     }
 
     val downloadDirUri: Flow<String?> = context.dataStore.data.map { it[Keys.DOWNLOAD_DIR_URI] }
@@ -42,7 +42,8 @@ class UserPreferences @Inject constructor(
     val onboardingDone: Flow<Boolean> = context.dataStore.data.map { it[Keys.ONBOARDING_DONE] ?: false }
     val appLock: Flow<Boolean> = context.dataStore.data.map { it[Keys.APP_LOCK] ?: false }
     val hideFromGallery: Flow<Boolean> = context.dataStore.data.map { it[Keys.HIDE_FROM_GALLERY] ?: true }
-    val skippedVersion: Flow<Int> = context.dataStore.data.map { it[Keys.SKIPPED_VERSION] ?: 0 }
+    val skippedVersionTag: Flow<String> = context.dataStore.data.map { it[Keys.SKIPPED_VERSION_TAG] ?: "" }
+    val autoUpdate: Flow<Boolean> = context.dataStore.data.map { it[Keys.AUTO_UPDATE] ?: true }
 
     suspend fun setDownloadDir(uri: String) {
         context.dataStore.edit { it[Keys.DOWNLOAD_DIR_URI] = uri }
@@ -80,7 +81,11 @@ class UserPreferences @Inject constructor(
         context.dataStore.edit { it[Keys.HIDE_FROM_GALLERY] = enabled }
     }
 
-    suspend fun setSkippedVersion(versionCode: Int) {
-        context.dataStore.edit { it[Keys.SKIPPED_VERSION] = versionCode }
+    suspend fun setSkippedVersionTag(tag: String) {
+        context.dataStore.edit { it[Keys.SKIPPED_VERSION_TAG] = tag }
+    }
+
+    suspend fun setAutoUpdate(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.AUTO_UPDATE] = enabled }
     }
 }

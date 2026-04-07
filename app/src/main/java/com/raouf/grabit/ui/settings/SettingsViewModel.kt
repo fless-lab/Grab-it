@@ -40,6 +40,10 @@ class SettingsViewModel @Inject constructor(
     val hideFromGallery = prefs.hideFromGallery
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
+    val autoUpdate = prefs.autoUpdate
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
     fun setAppLock(v: Boolean) { viewModelScope.launch { prefs.setAppLock(v) } }
     fun setHideFromGallery(v: Boolean) { viewModelScope.launch { prefs.setHideFromGallery(v) } }
+    fun setAutoUpdate(v: Boolean) { viewModelScope.launch { prefs.setAutoUpdate(v) } }
 }

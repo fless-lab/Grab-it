@@ -16,10 +16,22 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 data class AppUpdate(
-    @SerializedName("version_code") val versionCode: Int,
-    @SerializedName("version_name") val versionName: String,
-    @SerializedName("apk_url") val apkUrl: String,
+    val versionName: String,
+    val apkUrl: String,
     val changelog: String,
+)
+
+/** GitHub Releases API response (only fields we need) */
+private data class GithubRelease(
+    @SerializedName("tag_name") val tagName: String,
+    val name: String?,
+    val body: String?,
+    val assets: List<GithubAsset>,
+)
+
+private data class GithubAsset(
+    val name: String,
+    @SerializedName("browser_download_url") val downloadUrl: String,
 )
 
 @Singleton
@@ -29,48 +41,78 @@ class AppUpdateChecker @Inject constructor(
 ) {
     companion object {
         private const val TAG = "AppUpdateChecker"
-        private const val VERSION_URL =
-            "https://raw.githubusercontent.com/fless-lab/Grab-it/main/version.json"
+        private const val RELEASES_URL =
+            "https://api.github.com/repos/fless-lab/Grab-it/releases/latest"
     }
 
     /**
-     * Checks for a new app version. Returns AppUpdate if a newer version is available,
-     * null if already up to date or if user skipped this version.
+     * Checks the latest GitHub release. Returns AppUpdate if a newer version is available.
+     * Compares the release tag (e.g. "v1.1.0") with BuildConfig.VERSION_NAME.
+     * APK is auto-detected from release assets (first .apk file).
      */
     suspend fun check(): AppUpdate? = withContext(Dispatchers.IO) {
         try {
-            val conn = URL(VERSION_URL).openConnection() as HttpURLConnection
+            val conn = URL(RELEASES_URL).openConnection() as HttpURLConnection
             conn.connectTimeout = 10_000
             conn.readTimeout = 10_000
             conn.requestMethod = "GET"
+            conn.setRequestProperty("Accept", "application/vnd.github+json")
 
             if (conn.responseCode != 200) {
-                Log.w(TAG, "Version check HTTP ${conn.responseCode}")
+                Log.w(TAG, "Release check HTTP ${conn.responseCode}")
                 return@withContext null
             }
 
             val json = conn.inputStream.bufferedReader().readText()
             conn.disconnect()
 
-            val update = Gson().fromJson(json, AppUpdate::class.java)
+            val release = Gson().fromJson(json, GithubRelease::class.java)
 
-            if (update.versionCode <= BuildConfig.VERSION_CODE) {
-                Log.d(TAG, "App is up to date (${BuildConfig.VERSION_CODE})")
+            // Extract version from tag (strip leading "v" if present)
+            val remoteVersion = release.tagName.removePrefix("v")
+            val localVersion = BuildConfig.VERSION_NAME
+
+            if (!isNewer(remoteVersion, localVersion)) {
+                Log.d(TAG, "App is up to date ($localVersion)")
+                return@withContext null
+            }
+
+            // Find APK asset
+            val apkAsset = release.assets.firstOrNull { it.name.endsWith(".apk") }
+            if (apkAsset == null) {
+                Log.w(TAG, "No APK found in release assets")
                 return@withContext null
             }
 
             // Check if user skipped this version
-            val skipped = prefs.skippedVersion.first()
-            if (skipped == update.versionCode) {
-                Log.d(TAG, "User skipped version ${update.versionCode}")
+            val skippedTag = prefs.skippedVersionTag.first()
+            if (skippedTag == remoteVersion) {
+                Log.d(TAG, "User skipped version $remoteVersion")
                 return@withContext null
             }
 
-            Log.d(TAG, "New version available: ${update.versionName} (${update.versionCode})")
-            update
+            Log.d(TAG, "New version available: $remoteVersion (current: $localVersion)")
+            AppUpdate(
+                versionName = remoteVersion,
+                apkUrl = apkAsset.downloadUrl,
+                changelog = release.body ?: release.name ?: "New version available",
+            )
         } catch (e: Exception) {
             Log.w(TAG, "Update check failed: ${e.message}")
             null
         }
+    }
+
+    /** Compare semver strings: "1.2.0" > "1.1.0" */
+    private fun isNewer(remote: String, local: String): Boolean {
+        val r = remote.split(".").mapNotNull { it.toIntOrNull() }
+        val l = local.split(".").mapNotNull { it.toIntOrNull() }
+        for (i in 0 until maxOf(r.size, l.size)) {
+            val rv = r.getOrElse(i) { 0 }
+            val lv = l.getOrElse(i) { 0 }
+            if (rv > lv) return true
+            if (rv < lv) return false
+        }
+        return false
     }
 }

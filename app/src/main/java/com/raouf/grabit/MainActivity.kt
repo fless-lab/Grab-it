@@ -93,8 +93,10 @@ class MainActivity : FragmentActivity() {
             prefs.darkTheme.collect { isDarkTheme = it }
         }
 
-        // Silent update check
+        // Silent update check (respects user preference)
         lifecycleScope.launch(Dispatchers.IO) {
+            val autoUpdateEnabled = prefs.autoUpdate.first()
+            if (!autoUpdateEnabled) return@launch
             val update = updateChecker.check() ?: return@launch
             pendingUpdate = update
             // Auto-download silently

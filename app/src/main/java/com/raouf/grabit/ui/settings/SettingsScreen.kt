@@ -55,6 +55,7 @@ fun SettingsScreen(
     val downloadDir by viewModel.downloadDir.collectAsStateWithLifecycle()
     val appLock by viewModel.appLock.collectAsStateWithLifecycle()
     val hideFromGallery by viewModel.hideFromGallery.collectAsStateWithLifecycle()
+    val autoUpdate by viewModel.autoUpdate.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
 
@@ -147,6 +148,13 @@ fun SettingsScreen(
                 subtitle = "Detect video links when you copy them",
                 checked = clipboardMonitor,
                 onCheckedChange = viewModel::setClipboardMonitor,
+            )
+
+            SettingToggle(
+                title = "Auto-update",
+                subtitle = "Automatically download and install new versions",
+                checked = autoUpdate,
+                onCheckedChange = viewModel::setAutoUpdate,
             )
 
             Spacer(Modifier.height(24.dp))
