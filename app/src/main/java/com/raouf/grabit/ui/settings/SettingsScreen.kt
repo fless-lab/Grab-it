@@ -18,7 +18,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.rounded.Coffee
 import androidx.compose.material.icons.rounded.Folder
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -180,11 +184,37 @@ fun SettingsScreen(
 
             Spacer(Modifier.height(24.dp))
 
+            // Support
+            SectionLabel("SUPPORT")
+            Spacer(Modifier.height(8.dp))
+
+            SettingLink(
+                icon = Icons.Rounded.Coffee,
+                title = "Buy me a coffee",
+                subtitle = "Support development on Ko-fi",
+                onClick = {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://ko-fi.com/raoufatm"))
+                    context.startActivity(intent)
+                },
+            )
+
+            SettingLink(
+                icon = Icons.Rounded.Star,
+                title = "Star on GitHub",
+                subtitle = "Help others discover Grab'it",
+                onClick = {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/fless-lab/Grab-it"))
+                    context.startActivity(intent)
+                },
+            )
+
+            Spacer(Modifier.height(24.dp))
+
             // About
             SectionLabel("ABOUT")
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "Grab'it v1.0.0",
+                text = "Grab'it v${com.raouf.grabit.BuildConfig.VERSION_NAME}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -207,6 +237,34 @@ private fun SectionLabel(text: String) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(vertical = 4.dp),
     )
+}
+
+@Composable
+private fun SettingLink(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(22.dp),
+        )
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
 }
 
 @Composable
