@@ -31,6 +31,7 @@ class UserPreferences @Inject constructor(
         val HIDE_FROM_GALLERY = booleanPreferencesKey("hide_from_gallery")
         val SKIPPED_VERSION_TAG = stringPreferencesKey("skipped_version_tag")
         val AUTO_UPDATE = booleanPreferencesKey("auto_update")
+        val WIFI_ONLY = booleanPreferencesKey("wifi_only")
     }
 
     val downloadDirUri: Flow<String?> = context.dataStore.data.map { it[Keys.DOWNLOAD_DIR_URI] }
@@ -44,6 +45,7 @@ class UserPreferences @Inject constructor(
     val hideFromGallery: Flow<Boolean> = context.dataStore.data.map { it[Keys.HIDE_FROM_GALLERY] ?: true }
     val skippedVersionTag: Flow<String> = context.dataStore.data.map { it[Keys.SKIPPED_VERSION_TAG] ?: "" }
     val autoUpdate: Flow<Boolean> = context.dataStore.data.map { it[Keys.AUTO_UPDATE] ?: true }
+    val wifiOnly: Flow<Boolean> = context.dataStore.data.map { it[Keys.WIFI_ONLY] ?: false }
 
     suspend fun setDownloadDir(uri: String) {
         context.dataStore.edit { it[Keys.DOWNLOAD_DIR_URI] = uri }
@@ -87,5 +89,9 @@ class UserPreferences @Inject constructor(
 
     suspend fun setAutoUpdate(enabled: Boolean) {
         context.dataStore.edit { it[Keys.AUTO_UPDATE] = enabled }
+    }
+
+    suspend fun setWifiOnly(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.WIFI_ONLY] = enabled }
     }
 }

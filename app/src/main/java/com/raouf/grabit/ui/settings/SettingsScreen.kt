@@ -57,6 +57,7 @@ fun SettingsScreen(
     val appLock by viewModel.appLock.collectAsStateWithLifecycle()
     val hideFromGallery by viewModel.hideFromGallery.collectAsStateWithLifecycle()
     val autoUpdate by viewModel.autoUpdate.collectAsStateWithLifecycle()
+    val wifiOnly by viewModel.wifiOnly.collectAsStateWithLifecycle()
     val totalDownloads by viewModel.totalDownloads.collectAsStateWithLifecycle()
     val totalBytes by viewModel.totalBytes.collectAsStateWithLifecycle()
 
@@ -158,6 +159,13 @@ fun SettingsScreen(
                 subtitle = "Automatically download and install new versions",
                 checked = autoUpdate,
                 onCheckedChange = viewModel::setAutoUpdate,
+            )
+
+            SettingToggle(
+                title = "WiFi only",
+                subtitle = "Only download when connected to WiFi",
+                checked = wifiOnly,
+                onCheckedChange = viewModel::setWifiOnly,
             )
 
             Spacer(Modifier.height(24.dp))

@@ -61,9 +61,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import android.content.Intent
+import android.net.Uri
 import com.raouf.grabit.domain.model.Download
 import com.raouf.grabit.domain.model.DownloadStatus
 import com.raouf.grabit.ui.components.DownloadCard
@@ -83,6 +86,7 @@ fun HomeScreen(
     onDismissClipboard: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
+    val context = LocalContext.current
     val currentTab by viewModel.tab.collectAsStateWithLifecycle()
     val allItems by viewModel.allItems.collectAsStateWithLifecycle()
     val activeItems by viewModel.activeItems.collectAsStateWithLifecycle()
@@ -548,6 +552,18 @@ fun HomeScreen(
                                 onRetry = { viewModel.retryDownload(download) },
                                 onDelete = { downloadToDelete = download },
                                 onHide = { viewModel.hideDownload(download.id) },
+                                onShare = {
+                                    download.filePath?.let { path ->
+                                        val uri = Uri.parse(path)
+                                        val mime = if (download.isAudioOnly) "audio/*" else "video/*"
+                                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                            type = mime
+                                            putExtra(Intent.EXTRA_STREAM, uri)
+                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                        }
+                                        context.startActivity(Intent.createChooser(shareIntent, "Share"))
+                                    }
+                                },
                             )
                         }
                     }

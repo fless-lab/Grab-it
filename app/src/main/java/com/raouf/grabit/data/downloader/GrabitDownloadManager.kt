@@ -14,6 +14,8 @@ import com.raouf.grabit.domain.model.DownloadStatus
 import com.raouf.grabit.domain.model.VideoSource
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLRequest
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -62,6 +64,13 @@ class GrabitDownloadManager @Inject constructor(
         subLangs: String? = null,
         onProgress: (Float) -> Unit = {},
     ): Result<String> = withContext(Dispatchers.IO) {
+        // WiFi-only check
+        val wifiOnly = prefs.wifiOnly.first()
+        if (wifiOnly && !isOnWifi()) {
+            dao.updateProgress(id, DownloadStatus.WAITING_NETWORK.name, 0f)
+            return@withContext Result.failure(Exception("Waiting for WiFi"))
+        }
+
         com.raouf.grabit.GrabitApp.ytdlReady.await()
         // Keep current progress on resume, only set 0 for fresh downloads
         val existing = dao.getById(id)
@@ -308,5 +317,12 @@ class GrabitDownloadManager @Inject constructor(
         if (dir.findFile(".nomedia") == null) {
             dir.createFile("application/octet-stream", ".nomedia")
         }
+    }
+
+    private fun isOnWifi(): Boolean {
+        val cm = context.getSystemService(ConnectivityManager::class.java)
+        val network = cm.activeNetwork ?: return false
+        val caps = cm.getNetworkCapabilities(network) ?: return false
+        return caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
     }
 }

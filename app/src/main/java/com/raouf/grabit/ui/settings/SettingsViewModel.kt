@@ -59,8 +59,11 @@ class SettingsViewModel @Inject constructor(
 
     val autoUpdate = prefs.autoUpdate
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+    val wifiOnly = prefs.wifiOnly
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     fun setAppLock(v: Boolean) { viewModelScope.launch { prefs.setAppLock(v) } }
     fun setHideFromGallery(v: Boolean) { viewModelScope.launch { prefs.setHideFromGallery(v) } }
     fun setAutoUpdate(v: Boolean) { viewModelScope.launch { prefs.setAutoUpdate(v) } }
+    fun setWifiOnly(v: Boolean) { viewModelScope.launch { prefs.setWifiOnly(v) } }
 }
