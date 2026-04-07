@@ -1,56 +1,179 @@
 package com.raouf.grabit.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import androidx.compose.ui.platform.LocalContext
+import com.raouf.grabit.domain.model.Download
+import com.raouf.grabit.domain.model.DownloadStatus
+import com.raouf.grabit.ui.browser.BrowserScreen
 import com.raouf.grabit.ui.home.HomeScreen
+import com.raouf.grabit.ui.onboarding.OnboardingScreen
+import com.raouf.grabit.ui.player.PlayerActivity
+import com.raouf.grabit.ui.playlist.PlaylistDetailScreen
+import com.raouf.grabit.ui.playlist.PlaylistScreen
 import com.raouf.grabit.ui.preview.PreviewScreen
 import com.raouf.grabit.ui.settings.SettingsScreen
-import java.net.URLDecoder
 import java.net.URLEncoder
 
 object Routes {
+    const val ONBOARDING = "onboarding"
     const val HOME = "home"
     const val PREVIEW = "preview/{url}"
+    const val PLAYLIST = "playlist/{url}"
+    const val PLAYLIST_DETAIL = "playlist_detail/{playlistId}"
+    const val BROWSER = "browser"
     const val SETTINGS = "settings"
 
     fun preview(url: String): String =
         "preview/${URLEncoder.encode(url, "UTF-8")}"
+
+    fun playlist(url: String): String =
+        "playlist/${URLEncoder.encode(url, "UTF-8")}"
+
+    fun playlistDetail(playlistId: String): String =
+        "playlist_detail/${URLEncoder.encode(playlistId, "UTF-8")}"
+
+    /** Route to the right screen based on URL type */
+    fun forUrl(url: String): String {
+        val lower = url.lowercase()
+        return if ("playlist?list=" in lower || "&list=" in lower || "/sets/" in lower) {
+            playlist(url)
+        } else {
+            preview(url)
+        }
+    }
 }
 
 @Composable
 fun GrabitNavGraph(
     navController: NavHostController,
     sharedUrl: String?,
+    onSharedUrlConsumed: () -> Unit = {},
+    clipboardUrl: String? = null,
+    onDismissClipboard: () -> Unit = {},
+    startDestination: String,
+    onOnboardingComplete: (folderUri: String?) -> Unit,
 ) {
+    // Handle shared URL at graph level (works from any screen)
+    LaunchedEffect(sharedUrl) {
+        if (!sharedUrl.isNullOrBlank()) {
+            navController.navigate(Routes.forUrl(sharedUrl))
+            onSharedUrlConsumed()
+        }
+    }
+
     NavHost(
         navController = navController,
-        startDestination = Routes.HOME,
+        startDestination = startDestination,
     ) {
+        composable(Routes.ONBOARDING) {
+            OnboardingScreen(
+                onFolderSelected = { uri ->
+                    onOnboardingComplete(uri)
+                    navController.navigate(Routes.HOME) {
+                        popUpTo(Routes.ONBOARDING) { inclusive = true }
+                    }
+                },
+                onSkip = {
+                    onOnboardingComplete(null)
+                    navController.navigate(Routes.HOME) {
+                        popUpTo(Routes.ONBOARDING) { inclusive = true }
+                    }
+                },
+            )
+        }
+
         composable(Routes.HOME) {
+            val context = LocalContext.current
             HomeScreen(
                 onNavigateToPreview = { url ->
-                    navController.navigate(Routes.preview(url))
+                    navController.navigate(Routes.forUrl(url))
                 },
                 onNavigateToSettings = {
                     navController.navigate(Routes.SETTINGS)
                 },
-                onDownloadClick = { /* TODO: detail view */ },
-                urlFromIntent = sharedUrl,
+                onNavigateToBrowser = {
+                    navController.navigate(Routes.BROWSER)
+                },
+                onDownloadClick = { download ->
+                    if (!download.isAudioOnly) {
+                        val isActive = download.status == DownloadStatus.DOWNLOADING ||
+                            download.status == DownloadStatus.PAUSED
+                        if (isActive) {
+                            // Stream from CDN (works even if local file is partial/DASH)
+                            PlayerActivity.launch(
+                                context, download.filePath ?: "", download.title,
+                                streaming = true, videoUrl = download.url,
+                            )
+                        } else if (download.filePath != null) {
+                            // Play from local file (completed/failed with partial file)
+                            PlayerActivity.launch(context, download.filePath, download.title)
+                        }
+                    }
+                },
+                onNavigateToPlaylistDetail = { playlistId ->
+                    navController.navigate(Routes.playlistDetail(playlistId))
+                },
+                clipboardUrl = clipboardUrl,
+                onDismissClipboard = onDismissClipboard,
             )
         }
 
         composable(
             route = Routes.PREVIEW,
             arguments = listOf(navArgument("url") { type = NavType.StringType }),
-        ) { backStackEntry ->
-            val encodedUrl = backStackEntry.arguments?.getString("url") ?: ""
-            // URL is decoded automatically by Navigation, but double-check
+        ) {
             PreviewScreen(
                 onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(
+            route = Routes.PLAYLIST,
+            arguments = listOf(navArgument("url") { type = NavType.StringType }),
+        ) {
+            PlaylistScreen(
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(
+            route = Routes.PLAYLIST_DETAIL,
+            arguments = listOf(navArgument("playlistId") { type = NavType.StringType }),
+        ) {
+            val context = LocalContext.current
+            PlaylistDetailScreen(
+                onBack = { navController.popBackStack() },
+                onDownloadClick = { download ->
+                    if (!download.isAudioOnly) {
+                        val isActive = download.status == DownloadStatus.DOWNLOADING ||
+                            download.status == DownloadStatus.PAUSED
+                        if (isActive) {
+                            // Stream from CDN (works even if local file is partial/DASH)
+                            PlayerActivity.launch(
+                                context, download.filePath ?: "", download.title,
+                                streaming = true, videoUrl = download.url,
+                            )
+                        } else if (download.filePath != null) {
+                            // Play from local file (completed/failed with partial file)
+                            PlayerActivity.launch(context, download.filePath, download.title)
+                        }
+                    }
+                },
+            )
+        }
+
+        composable(Routes.BROWSER) {
+            BrowserScreen(
+                onBack = { navController.popBackStack() },
+                onDownloadUrl = { url ->
+                    navController.navigate(Routes.forUrl(url))
+                },
             )
         }
 

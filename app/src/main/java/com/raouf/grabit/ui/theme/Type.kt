@@ -78,25 +78,25 @@ val GrabitTypography = Typography(
         fontSize = 11.sp,
         lineHeight = 16.sp,
     ),
-    // Mono labels (stats, progress, file sizes)
+    // Labels (stats, progress, file sizes)
     labelLarge = TextStyle(
-        fontFamily = SpaceMonoFont,
-        fontWeight = FontWeight.Bold,
+        fontFamily = InterFont,
+        fontWeight = FontWeight.SemiBold,
         fontSize = 13.sp,
         lineHeight = 18.sp,
     ),
     labelMedium = TextStyle(
-        fontFamily = SpaceMonoFont,
-        fontWeight = FontWeight.Normal,
+        fontFamily = InterFont,
+        fontWeight = FontWeight.Medium,
         fontSize = 11.sp,
         lineHeight = 16.sp,
         letterSpacing = 0.3.sp,
     ),
     labelSmall = TextStyle(
-        fontFamily = SpaceMonoFont,
-        fontWeight = FontWeight.Normal,
+        fontFamily = InterFont,
+        fontWeight = FontWeight.Medium,
         fontSize = 9.sp,
         lineHeight = 12.sp,
-        letterSpacing = 0.8.sp,
+        letterSpacing = 0.5.sp,
     ),
 )

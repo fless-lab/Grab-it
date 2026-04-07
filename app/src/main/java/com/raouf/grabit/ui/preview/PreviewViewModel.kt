@@ -23,6 +23,8 @@ data class PreviewState(
     val error: String? = null,
     val selectedFormat: VideoFormat? = null,
     val downloadStarted: Boolean = false,
+    val subtitlesEnabled: Boolean = false,
+    val selectedSubLangs: Set<String> = emptySet(),
 )
 
 @HiltViewModel
@@ -45,11 +47,11 @@ class PreviewViewModel @Inject constructor(
         extractInfo()
     }
 
-    private fun extractInfo() {
+    private fun extractInfo(forceRefresh: Boolean = false) {
         viewModelScope.launch {
             _state.value = PreviewState(isLoading = true)
             try {
-                val info = extractor.extract(url)
+                val info = extractor.extract(url, forceRefresh = forceRefresh)
                 _state.value = PreviewState(
                     isLoading = false,
                     info = info,
@@ -58,7 +60,7 @@ class PreviewViewModel @Inject constructor(
             } catch (e: Exception) {
                 _state.value = PreviewState(
                     isLoading = false,
-                    error = e.message ?: "Failed to extract video info",
+                    error = com.raouf.grabit.data.downloader.ErrorParser.friendlyMessage(e.message),
                 )
             }
         }
@@ -68,11 +70,32 @@ class PreviewViewModel @Inject constructor(
         _state.value = _state.value.copy(selectedFormat = format)
     }
 
+    fun toggleSubtitles(enabled: Boolean) {
+        _state.value = _state.value.copy(
+            subtitlesEnabled = enabled,
+            selectedSubLangs = if (enabled) {
+                // Auto-select common languages if available
+                val available = _state.value.info?.subtitleLanguages ?: emptyList()
+                val defaults = listOf("en", "fr", "ar", "es")
+                available.filter { it in defaults }.toSet().ifEmpty { available.take(3).toSet() }
+            } else emptySet(),
+        )
+    }
+
+    fun toggleSubLang(lang: String) {
+        val current = _state.value.selectedSubLangs
+        _state.value = _state.value.copy(
+            selectedSubLangs = if (lang in current) current - lang else current + lang,
+        )
+    }
+
     fun startDownload() {
         val info = _state.value.info ?: return
         val format = _state.value.selectedFormat ?: return
+        val subLangs = if (_state.value.subtitlesEnabled) _state.value.selectedSubLangs else emptySet()
 
         viewModelScope.launch {
+            val subLangsStr = subLangs.joinToString(",").ifBlank { null }
             val id = repository.createDownload(
                 url = info.url,
                 title = info.title,
@@ -80,6 +103,8 @@ class PreviewViewModel @Inject constructor(
                 source = info.source,
                 isAudioOnly = format.isAudioOnly,
                 quality = format.quality,
+                formatId = format.formatId,
+                subLangs = subLangsStr,
             )
 
             DownloadService.startDownload(
@@ -90,6 +115,7 @@ class PreviewViewModel @Inject constructor(
                 source = info.source,
                 formatId = format.formatId,
                 isAudioOnly = format.isAudioOnly,
+                subLangs = subLangs.joinToString(","),
             )
 
             _state.value = _state.value.copy(downloadStarted = true)
@@ -97,4 +123,6 @@ class PreviewViewModel @Inject constructor(
     }
 
     fun retry() = extractInfo()
+
+    fun refresh() = extractInfo(forceRefresh = true)
 }

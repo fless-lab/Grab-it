@@ -82,6 +82,11 @@ dependencies {
     // Image loading
     implementation(libs.coil.compose)
 
+    // Media3 (ExoPlayer)
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.ui)
+    implementation(libs.media3.session)
+
     // yt-dlp Android
     implementation(libs.youtubedl.library)
     implementation(libs.youtubedl.ffmpeg)
@@ -89,6 +94,9 @@ dependencies {
     // Coroutines
     implementation(libs.coroutines.core)
     implementation(libs.coroutines.android)
+
+    // Biometric
+    implementation(libs.biometric)
 
     // Work Manager
     implementation(libs.work.runtime)

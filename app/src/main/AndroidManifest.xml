@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
@@ -25,14 +26,76 @@
             android:exported="true"
             android:launchMode="singleTask"
             android:theme="@style/Theme.Grabit">
-
-            <!-- Main launcher -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- Share intent: receive text (URLs) from other apps -->
+            <!-- Deep links: clicking video URLs can open Grab'it -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <!-- YouTube -->
+                <data android:scheme="https" android:host="youtube.com" />
+                <data android:scheme="https" android:host="www.youtube.com" />
+                <data android:scheme="https" android:host="m.youtube.com" />
+                <data android:scheme="https" android:host="youtu.be" />
+                <data android:scheme="http" android:host="youtube.com" />
+                <data android:scheme="http" android:host="www.youtube.com" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <!-- Facebook -->
+                <data android:scheme="https" android:host="www.facebook.com" android:pathPattern="/.*videos/.*" />
+                <data android:scheme="https" android:host="m.facebook.com" android:pathPattern="/.*videos/.*" />
+                <data android:scheme="https" android:host="fb.watch" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <!-- Instagram -->
+                <data android:scheme="https" android:host="www.instagram.com" android:pathPattern="/reel/.*" />
+                <data android:scheme="https" android:host="www.instagram.com" android:pathPattern="/p/.*" />
+                <data android:scheme="https" android:host="www.instagram.com" android:pathPattern="/tv/.*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <!-- TikTok -->
+                <data android:scheme="https" android:host="www.tiktok.com" android:pathPattern="/.*/video/.*" />
+                <data android:scheme="https" android:host="vm.tiktok.com" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <!-- Twitter / X -->
+                <data android:scheme="https" android:host="twitter.com" android:pathPattern="/.*/status/.*" />
+                <data android:scheme="https" android:host="x.com" android:pathPattern="/.*/status/.*" />
+            </intent-filter>
+        </activity>
+
+        <!-- Video player with PiP support -->
+        <activity
+            android:name=".ui.player.PlayerActivity"
+            android:exported="false"
+            android:supportsPictureInPicture="true"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.Grabit" />
+
+        <!-- Transparent activity that receives share intents -->
+        <activity
+            android:name=".ShareReceiverActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Grabit.Transparent"
+            android:excludeFromRecents="true"
+            android:noHistory="true">
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />

@@ -12,7 +12,11 @@ data class Download(
     val fileSize: Long? = null,
     val isAudioOnly: Boolean = false,
     val quality: String = "",
+    val formatId: String = "best",
     val createdAt: Long = System.currentTimeMillis(),
     val completedAt: Long? = null,
     val errorMessage: String? = null,
+    val playlistId: String? = null,
+    val playlistTitle: String? = null,
+    val subLangs: String? = null,
 )

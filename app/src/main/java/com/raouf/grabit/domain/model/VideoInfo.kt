@@ -8,6 +8,7 @@ data class VideoInfo(
     val uploader: String?,
     val source: VideoSource,
     val formats: List<VideoFormat>,
+    val subtitleLanguages: List<String> = emptyList(),
 )
 
 data class VideoFormat(
@@ -16,6 +17,19 @@ data class VideoFormat(
     val quality: String,
     val filesize: Long?,
     val isAudioOnly: Boolean,
+)
+
+data class PlaylistInfo(
+    val title: String,
+    val uploader: String?,
+    val entries: List<PlaylistEntry>,
+)
+
+data class PlaylistEntry(
+    val url: String,
+    val title: String,
+    val thumbnail: String?,
+    val duration: Long?,
 )
 
 enum class VideoSource(val displayName: String, val folder: String) {

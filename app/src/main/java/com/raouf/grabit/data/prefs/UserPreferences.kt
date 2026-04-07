@@ -27,6 +27,8 @@ class UserPreferences @Inject constructor(
         val CLIPBOARD_MONITOR = booleanPreferencesKey("clipboard_monitor")
         val DEFAULT_QUALITY = stringPreferencesKey("default_quality")
         val ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
+        val APP_LOCK = booleanPreferencesKey("app_lock")
+        val HIDE_FROM_GALLERY = booleanPreferencesKey("hide_from_gallery")
     }
 
     val downloadDirUri: Flow<String?> = context.dataStore.data.map { it[Keys.DOWNLOAD_DIR_URI] }
@@ -36,6 +38,8 @@ class UserPreferences @Inject constructor(
     val clipboardMonitor: Flow<Boolean> = context.dataStore.data.map { it[Keys.CLIPBOARD_MONITOR] ?: true }
     val defaultQuality: Flow<String> = context.dataStore.data.map { it[Keys.DEFAULT_QUALITY] ?: "best" }
     val onboardingDone: Flow<Boolean> = context.dataStore.data.map { it[Keys.ONBOARDING_DONE] ?: false }
+    val appLock: Flow<Boolean> = context.dataStore.data.map { it[Keys.APP_LOCK] ?: false }
+    val hideFromGallery: Flow<Boolean> = context.dataStore.data.map { it[Keys.HIDE_FROM_GALLERY] ?: true }
 
     suspend fun setDownloadDir(uri: String) {
         context.dataStore.edit { it[Keys.DOWNLOAD_DIR_URI] = uri }
@@ -63,5 +67,13 @@ class UserPreferences @Inject constructor(
 
     suspend fun setOnboardingDone() {
         context.dataStore.edit { it[Keys.ONBOARDING_DONE] = true }
+    }
+
+    suspend fun setAppLock(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.APP_LOCK] = enabled }
+    }
+
+    suspend fun setHideFromGallery(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.HIDE_FROM_GALLERY] = enabled }
     }
 }

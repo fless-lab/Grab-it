@@ -8,28 +8,45 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CloudDownload
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -42,7 +59,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.raouf.grabit.domain.model.Download
+import com.raouf.grabit.domain.model.DownloadStatus
 import com.raouf.grabit.ui.components.DownloadCard
+import com.raouf.grabit.ui.components.PlaylistGroupCard
 import com.raouf.grabit.ui.components.UrlInputBar
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -50,30 +69,222 @@ import com.raouf.grabit.ui.components.UrlInputBar
 fun HomeScreen(
     onNavigateToPreview: (url: String) -> Unit,
     onNavigateToSettings: () -> Unit,
+    onNavigateToBrowser: () -> Unit = {},
     onDownloadClick: (Download) -> Unit,
-    urlFromIntent: String?,
+    onNavigateToPlaylistDetail: (playlistId: String) -> Unit = {},
+    clipboardUrl: String? = null,
+    onDismissClipboard: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val currentTab by viewModel.tab.collectAsStateWithLifecycle()
-    val allDownloads by viewModel.allDownloads.collectAsStateWithLifecycle()
-    val activeDownloads by viewModel.activeDownloads.collectAsStateWithLifecycle()
-    val completedDownloads by viewModel.completedDownloads.collectAsStateWithLifecycle()
+    val allItems by viewModel.allItems.collectAsStateWithLifecycle()
+    val activeItems by viewModel.activeItems.collectAsStateWithLifecycle()
+    val completedItems by viewModel.completedItems.collectAsStateWithLifecycle()
+    val progressMap by viewModel.progressMap.collectAsStateWithLifecycle()
 
     val displayList = when (currentTab) {
-        HomeTab.ALL -> allDownloads
-        HomeTab.ACTIVE -> activeDownloads
-        HomeTab.COMPLETED -> completedDownloads
+        HomeTab.ALL -> allItems
+        HomeTab.ACTIVE -> activeItems
+        HomeTab.COMPLETED -> completedItems
     }
 
     var urlInput by remember { mutableStateOf("") }
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    // Pre-fill from share intent
-    LaunchedEffect(urlFromIntent) {
-        if (!urlFromIntent.isNullOrBlank()) {
-            urlInput = urlFromIntent
+    // Delete confirmation dialog state
+    var downloadToDelete by remember { mutableStateOf<Download?>(null) }
+    var playlistToDelete by remember { mutableStateOf<DownloadItem.PlaylistGroup?>(null) }
+    var deleteFromDisk by remember { mutableStateOf(false) }
+
+    // Quick mode events
+    LaunchedEffect(Unit) {
+        viewModel.quickEvent.collect { event ->
+            when (event) {
+                is QuickDownloadEvent.Extracting ->
+                    snackbarHostState.showSnackbar("Extracting video info...")
+                is QuickDownloadEvent.Started ->
+                    snackbarHostState.showSnackbar("Download started: ${event.title}")
+                is QuickDownloadEvent.Failed ->
+                    snackbarHostState.showSnackbar("Failed: ${event.error}")
+            }
         }
     }
 
+    // Manual paste = always preview (user is in the app, has time)
+    val submitUrl: (String) -> Unit = remember {
+        { url: String -> onNavigateToPreview(url) }
+    }
+
+    // Clipboard auto-detect: show snackbar with "Download" action
+    LaunchedEffect(clipboardUrl) {
+        if (!clipboardUrl.isNullOrBlank()) {
+            val result = snackbarHostState.showSnackbar(
+                message = "Video link detected",
+                actionLabel = "Download",
+                duration = SnackbarDuration.Long,
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                onNavigateToPreview(clipboardUrl)
+            }
+            onDismissClipboard()
+        }
+    }
+
+    // Delete confirmation dialog
+    if (downloadToDelete != null) {
+        val dl = downloadToDelete!!
+        AlertDialog(
+            onDismissRequest = {
+                downloadToDelete = null
+                deleteFromDisk = false
+            },
+            title = {
+                Text(
+                    "Delete download?",
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        dl.title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(
+                            checked = deleteFromDisk,
+                            onCheckedChange = { deleteFromDisk = it },
+                            colors = CheckboxDefaults.colors(
+                                checkedColor = MaterialTheme.colorScheme.error,
+                                checkmarkColor = MaterialTheme.colorScheme.onError,
+                            ),
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            "Also delete file from disk",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                    }
+                    if (deleteFromDisk) {
+                        Text(
+                            "This cannot be undone.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(start = 48.dp),
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteDownload(dl.id, deleteFile = deleteFromDisk)
+                        downloadToDelete = null
+                        deleteFromDisk = false
+                    },
+                ) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        downloadToDelete = null
+                        deleteFromDisk = false
+                    },
+                ) {
+                    Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(16.dp),
+        )
+    }
+
+    // Playlist group delete dialog
+    if (playlistToDelete != null) {
+        val group = playlistToDelete!!
+        AlertDialog(
+            onDismissRequest = {
+                playlistToDelete = null
+                deleteFromDisk = false
+            },
+            title = {
+                Text(
+                    "Delete playlist?",
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        "${group.title} (${group.totalCount} videos)",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(
+                            checked = deleteFromDisk,
+                            onCheckedChange = { deleteFromDisk = it },
+                            colors = CheckboxDefaults.colors(
+                                checkedColor = MaterialTheme.colorScheme.error,
+                                checkmarkColor = MaterialTheme.colorScheme.onError,
+                            ),
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            "Also delete files from disk",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                    }
+                    if (deleteFromDisk) {
+                        Text(
+                            "This cannot be undone.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(start = 48.dp),
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deletePlaylistGroup(group.downloads, deleteFiles = deleteFromDisk)
+                        playlistToDelete = null
+                        deleteFromDisk = false
+                    },
+                ) {
+                    Text("Delete all", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        playlistToDelete = null
+                        deleteFromDisk = false
+                    },
+                ) {
+                    Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(16.dp),
+        )
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -85,9 +296,17 @@ fun HomeScreen(
                 Text(
                     text = "Grab'it",
                     style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
                 )
             },
             actions = {
+                IconButton(onClick = onNavigateToBrowser) {
+                    Icon(
+                        Icons.Rounded.Language,
+                        contentDescription = "Browser",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 IconButton(onClick = onNavigateToSettings) {
                     Icon(
                         Icons.Rounded.Settings,
@@ -108,7 +327,7 @@ fun HomeScreen(
                 onUrlChange = { urlInput = it },
                 onSubmit = {
                     if (urlInput.isNotBlank()) {
-                        onNavigateToPreview(urlInput)
+                        submitUrl(urlInput)
                         urlInput = ""
                     }
                 },
@@ -157,19 +376,134 @@ fun HomeScreen(
             EmptyState()
         }
 
+        val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+
+        // Scroll to top when list grows (new download added)
+        val listSize = displayList.size
+        LaunchedEffect(listSize) {
+            if (listSize > 0) listState.animateScrollToItem(0)
+        }
+
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            items(displayList, key = { it.id }) { download ->
-                DownloadCard(
-                    download = download,
-                    onClick = { onDownloadClick(download) },
-                )
+            items(
+                count = displayList.size,
+                key = { index ->
+                    when (val item = displayList[index]) {
+                        is DownloadItem.Single -> "s_${item.download.id}"
+                        is DownloadItem.PlaylistGroup -> "p_${item.playlistId}"
+                    }
+                },
+            ) { index ->
+                when (val item = displayList[index]) {
+                    is DownloadItem.PlaylistGroup -> {
+                        val plDismissState = rememberSwipeToDismissBoxState(
+                            confirmValueChange = { value ->
+                                if (value == SwipeToDismissBoxValue.EndToStart) {
+                                    playlistToDelete = item
+                                    false // don't auto-dismiss, show dialog
+                                } else false
+                            },
+                        )
+                        SwipeToDismissBox(
+                            state = plDismissState,
+                            backgroundContent = {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(
+                                            MaterialTheme.colorScheme.error.copy(alpha = 0.15f),
+                                            shape = RoundedCornerShape(12.dp),
+                                        )
+                                        .padding(end = 20.dp),
+                                    contentAlignment = Alignment.CenterEnd,
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Delete,
+                                        contentDescription = "Delete",
+                                        tint = MaterialTheme.colorScheme.error,
+                                    )
+                                }
+                            },
+                            enableDismissFromStartToEnd = false,
+                        ) {
+                            PlaylistGroupCard(
+                                group = item,
+                                onClick = { onNavigateToPlaylistDetail(item.playlistId) },
+                            )
+                        }
+                    }
+                    is DownloadItem.Single -> {
+                        val download = item.download
+                        val dismissState = rememberSwipeToDismissBoxState(
+                            confirmValueChange = { value ->
+                                if (value == SwipeToDismissBoxValue.EndToStart) {
+                                    if (download.status == DownloadStatus.COMPLETED) {
+                                        downloadToDelete = download
+                                        false
+                                    } else {
+                                        viewModel.deleteDownload(download.id, deleteFile = true)
+                                        true
+                                    }
+                                } else false
+                            },
+                        )
+                        SwipeToDismissBox(
+                            state = dismissState,
+                            backgroundContent = {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(
+                                            MaterialTheme.colorScheme.error.copy(alpha = 0.15f),
+                                            shape = RoundedCornerShape(12.dp),
+                                        )
+                                        .padding(end = 20.dp),
+                                    contentAlignment = Alignment.CenterEnd,
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Delete,
+                                        contentDescription = "Delete",
+                                        tint = MaterialTheme.colorScheme.error,
+                                    )
+                                }
+                            },
+                            enableDismissFromStartToEnd = false,
+                        ) {
+                            val liveProgress = progressMap[download.id]
+                            DownloadCard(
+                                download = download,
+                                etaSeconds = liveProgress?.etaSeconds,
+                                speedBytes = liveProgress?.speedBytes,
+                                onClick = { onDownloadClick(download) },
+                                onPause = { viewModel.pauseDownload(download.id) },
+                                onResume = { viewModel.resumeDownload(download) },
+                                onRetry = { viewModel.retryDownload(download) },
+                                onDelete = { downloadToDelete = download },
+                            )
+                        }
+                    }
+                }
             }
         }
     }
+
+    SnackbarHost(
+        hostState = snackbarHostState,
+        modifier = Modifier.align(Alignment.BottomCenter),
+    ) { data ->
+        Snackbar(
+            snackbarData = data,
+            containerColor = MaterialTheme.colorScheme.inverseSurface,
+            contentColor = MaterialTheme.colorScheme.inverseOnSurface,
+            shape = RoundedCornerShape(12.dp),
+        )
+    }
+    } // Box
 }
 
 @Composable

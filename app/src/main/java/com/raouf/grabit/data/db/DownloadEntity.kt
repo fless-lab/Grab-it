@@ -20,9 +20,14 @@ data class DownloadEntity(
     val fileSize: Long? = null,
     val isAudioOnly: Boolean = false,
     val quality: String = "",
+    val formatId: String = "best",
     val createdAt: Long = System.currentTimeMillis(),
     val completedAt: Long? = null,
     val errorMessage: String? = null,
+    val playlistId: String? = null,
+    val playlistTitle: String? = null,
+    val subLangs: String? = null,
+    val isHidden: Boolean = false,
 ) {
     fun toDomain(): Download = Download(
         id = id,
@@ -36,9 +41,14 @@ data class DownloadEntity(
         fileSize = fileSize,
         isAudioOnly = isAudioOnly,
         quality = quality,
+        formatId = formatId,
         createdAt = createdAt,
         completedAt = completedAt,
         errorMessage = errorMessage,
+        playlistId = playlistId,
+        playlistTitle = playlistTitle,
+        subLangs = subLangs,
+        isHidden = isHidden,
     )
 
     companion object {
@@ -54,9 +64,14 @@ data class DownloadEntity(
             fileSize = d.fileSize,
             isAudioOnly = d.isAudioOnly,
             quality = d.quality,
+            formatId = d.formatId,
             createdAt = d.createdAt,
             completedAt = d.completedAt,
             errorMessage = d.errorMessage,
+            playlistId = d.playlistId,
+            playlistTitle = d.playlistTitle,
+            subLangs = d.subLangs,
+            isHidden = d.isHidden,
         )
     }
 }

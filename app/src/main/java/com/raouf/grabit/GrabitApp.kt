@@ -2,6 +2,7 @@ package com.raouf.grabit
 
 import android.app.Application
 import android.util.Log
+import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CompletableDeferred
@@ -28,6 +29,10 @@ class GrabitApp : Application() {
                 Log.d(TAG, "Initializing yt-dlp...")
                 YoutubeDL.getInstance().init(this@GrabitApp)
                 Log.d(TAG, "yt-dlp initialized successfully")
+
+                Log.d(TAG, "Initializing FFmpeg...")
+                FFmpeg.getInstance().init(this@GrabitApp)
+                Log.d(TAG, "FFmpeg initialized successfully")
                 ytdlReady.complete(true)
             } catch (e: Exception) {
                 Log.e(TAG, "yt-dlp init failed: ${e.message}", e)
