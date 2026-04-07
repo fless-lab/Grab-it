@@ -1,23 +1,28 @@
 {
   "project_info": {
-    "project_number": "000000000000",
-    "project_id": "grabit-placeholder",
-    "storage_bucket": "grabit-placeholder.appspot.com"
+    "project_number": "892064236935",
+    "project_id": "grab-it-6bf59",
+    "storage_bucket": "grab-it-6bf59.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:000000000000:android:0000000000000000",
+        "mobilesdk_app_id": "1:892064236935:android:032bb37ca8c5f37866ff22",
         "android_client_info": {
           "package_name": "com.raouf.grabit"
         }
       },
+      "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyPlaceholderKeyForBuildOnly000"
+          "current_key": "AIzaSyBI2TyGmp5bmi54VpBf9RRYw9Qfun9DqAk"
         }
       ],
-      "services": {}
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
     }
   ],
   "configuration_version": "1"
