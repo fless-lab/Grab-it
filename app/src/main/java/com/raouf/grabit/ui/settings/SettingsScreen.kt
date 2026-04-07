@@ -218,7 +218,7 @@ fun SettingsScreen(
                 title = "Buy me a coffee",
                 subtitle = "Support development on Ko-fi",
                 onClick = {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://ko-fi.com/raouf"))
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://ko-fi.com/abdouraoufatarmla"))
                     context.startActivity(intent)
                 },
             )
