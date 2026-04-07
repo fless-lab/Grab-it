@@ -206,13 +206,19 @@ fun SettingsScreen(
             // Support
             SectionLabel("SUPPORT")
             Spacer(Modifier.height(8.dp))
+            Text(
+                text = "Grab'it is 100% free, no ads, no limits. If you find it useful, you can support its development.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+            )
+            Spacer(Modifier.height(8.dp))
 
             SettingLink(
                 icon = Icons.Rounded.Coffee,
                 title = "Buy me a coffee",
                 subtitle = "Support development on Ko-fi",
                 onClick = {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://ko-fi.com/raoufatm"))
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://ko-fi.com/raouf"))
                     context.startActivity(intent)
                 },
             )
