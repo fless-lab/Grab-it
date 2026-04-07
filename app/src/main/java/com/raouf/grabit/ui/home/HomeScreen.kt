@@ -108,7 +108,7 @@ fun HomeScreen(
             tabList.filter { item ->
                 when (item) {
                     is DownloadItem.Single -> item.download.title.lowercase().contains(q) ||
-                        item.download.source.lowercase().contains(q)
+                        item.download.source.displayName.lowercase().contains(q)
                     is DownloadItem.PlaylistGroup -> item.title.lowercase().contains(q) ||
                         item.downloads.any { it.title.lowercase().contains(q) }
                 }
