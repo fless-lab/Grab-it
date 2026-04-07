@@ -46,6 +46,9 @@ class GrabitApp : Application() {
             } catch (e: Exception) {
                 Log.w(TAG, "yt-dlp update skipped: ${e.message}")
             }
+
+            // Schedule periodic updates
+            com.raouf.grabit.data.updater.YtDlpUpdateWorker.schedule(this@GrabitApp)
         }
     }
 }
