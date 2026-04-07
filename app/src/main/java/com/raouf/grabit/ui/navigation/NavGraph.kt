@@ -28,6 +28,7 @@ object Routes {
     const val PLAYLIST_DETAIL = "playlist_detail/{playlistId}"
     const val BROWSER = "browser"
     const val SETTINGS = "settings"
+    const val SAFE_ZONE = "safe_zone"
 
     fun preview(url: String): String =
         "preview/${URLEncoder.encode(url, "UTF-8")}"
@@ -99,6 +100,19 @@ fun GrabitNavGraph(
                 },
                 onNavigateToBrowser = {
                     navController.navigate(Routes.BROWSER)
+                },
+                onNavigateToSafeZone = {
+                    val activity = context as? androidx.fragment.app.FragmentActivity
+                    if (activity != null && com.raouf.grabit.data.security.BiometricHelper.isAvailable(activity)) {
+                        com.raouf.grabit.data.security.BiometricHelper.authenticate(
+                            activity = activity,
+                            title = "Safe Zone",
+                            subtitle = "Verify to access hidden downloads",
+                            onSuccess = { navController.navigate(Routes.SAFE_ZONE) },
+                        )
+                    } else {
+                        navController.navigate(Routes.SAFE_ZONE)
+                    }
                 },
                 onDownloadClick = { download ->
                     if (!download.isAudioOnly) {
@@ -180,6 +194,18 @@ fun GrabitNavGraph(
         composable(Routes.SETTINGS) {
             SettingsScreen(
                 onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(Routes.SAFE_ZONE) {
+            val context = LocalContext.current
+            com.raouf.grabit.ui.safezone.SafeZoneScreen(
+                onBack = { navController.popBackStack() },
+                onDownloadClick = { download ->
+                    if (!download.isAudioOnly && download.filePath != null) {
+                        PlayerActivity.launch(context, download.filePath, download.title)
+                    }
+                },
             )
         }
     }

@@ -241,6 +241,9 @@ class GrabitDownloadManager @Inject constructor(
                         grabitDir.findFile(subName) ?: grabitDir.createDirectory(subName)
                     } else grabitDir
 
+                    // .nomedia to hide from gallery
+                    ensureNomedia(targetDir)
+
                     val mimeType = if (file.extension == "mp3") "audio/mpeg" else "video/mp4"
                     val docFile = targetDir?.createFile(mimeType, file.nameWithoutExtension)
                     if (docFile != null) {
@@ -296,5 +299,14 @@ class GrabitDownloadManager @Inject constructor(
 
         // Last resort: keep in temp
         return file.absolutePath
+    }
+
+    private suspend fun ensureNomedia(dir: DocumentFile?) {
+        if (dir == null) return
+        val hideFromGallery = prefs.hideFromGallery.first()
+        if (!hideFromGallery) return
+        if (dir.findFile(".nomedia") == null) {
+            dir.createFile("application/octet-stream", ".nomedia")
+        }
     }
 }

@@ -91,4 +91,12 @@ class DownloadRepository @Inject constructor(
 
     suspend fun setWaitingNetwork(id: Long) =
         dao.updateStatus(id, DownloadStatus.WAITING_NETWORK.name)
+
+    // Safe Zone
+    fun observeHidden(): Flow<List<Download>> =
+        dao.observeHidden().map { list -> list.map { it.toDomain() } }
+
+    suspend fun hideDownload(id: Long) = dao.hide(id)
+
+    suspend fun unhideDownload(id: Long) = dao.unhide(id)
 }

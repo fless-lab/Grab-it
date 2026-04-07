@@ -49,6 +49,8 @@ fun SettingsScreen(
     val autoSubfolder by viewModel.autoSubfolder.collectAsStateWithLifecycle()
     val clipboardMonitor by viewModel.clipboardMonitor.collectAsStateWithLifecycle()
     val downloadDir by viewModel.downloadDir.collectAsStateWithLifecycle()
+    val appLock by viewModel.appLock.collectAsStateWithLifecycle()
+    val hideFromGallery by viewModel.hideFromGallery.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
 
@@ -154,6 +156,26 @@ fun SettingsScreen(
                 subtitle = "Use dark theme",
                 checked = darkTheme,
                 onCheckedChange = viewModel::setDarkTheme,
+            )
+
+            Spacer(Modifier.height(24.dp))
+
+            // Security
+            SectionLabel("SECURITY")
+            Spacer(Modifier.height(8.dp))
+
+            SettingToggle(
+                title = "App lock",
+                subtitle = "Require biometric or PIN to open the app",
+                checked = appLock,
+                onCheckedChange = viewModel::setAppLock,
+            )
+
+            SettingToggle(
+                title = "Hide from gallery",
+                subtitle = "Prevent downloaded files from appearing in gallery apps",
+                checked = hideFromGallery,
+                onCheckedChange = viewModel::setHideFromGallery,
             )
 
             Spacer(Modifier.height(24.dp))

@@ -184,6 +184,10 @@ class HomeViewModel @Inject constructor(
 
     suspend fun isQuickModeEnabled(): Boolean = prefs.quickMode.first()
 
+    fun hideDownload(id: Long) {
+        viewModelScope.launch { repository.hideDownload(id) }
+    }
+
     fun quickDownload(url: String) {
         viewModelScope.launch {
             _quickEvent.emit(QuickDownloadEvent.Extracting)

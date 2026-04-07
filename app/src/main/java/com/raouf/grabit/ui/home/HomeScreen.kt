@@ -23,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Language
+import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
@@ -70,6 +71,7 @@ fun HomeScreen(
     onNavigateToPreview: (url: String) -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToBrowser: () -> Unit = {},
+    onNavigateToSafeZone: () -> Unit = {},
     onDownloadClick: (Download) -> Unit,
     onNavigateToPlaylistDetail: (playlistId: String) -> Unit = {},
     clipboardUrl: String? = null,
@@ -300,6 +302,13 @@ fun HomeScreen(
                 )
             },
             actions = {
+                IconButton(onClick = onNavigateToSafeZone) {
+                    Icon(
+                        Icons.Rounded.Lock,
+                        contentDescription = "Safe Zone",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 IconButton(onClick = onNavigateToBrowser) {
                     Icon(
                         Icons.Rounded.Language,
@@ -484,6 +493,7 @@ fun HomeScreen(
                                 onResume = { viewModel.resumeDownload(download) },
                                 onRetry = { viewModel.retryDownload(download) },
                                 onDelete = { downloadToDelete = download },
+                                onHide = { viewModel.hideDownload(download.id) },
                             )
                         }
                     }

@@ -19,4 +19,5 @@ data class Download(
     val playlistId: String? = null,
     val playlistTitle: String? = null,
     val subLangs: String? = null,
+    val isHidden: Boolean = false,
 )

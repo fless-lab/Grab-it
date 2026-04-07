@@ -24,6 +24,7 @@ import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.VideoFile
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -53,6 +54,7 @@ fun DownloadCard(
     onResume: () -> Unit = {},
     onRetry: () -> Unit = {},
     onDelete: () -> Unit = {},
+    onHide: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val animatedProgress by animateFloatAsState(
@@ -257,12 +259,14 @@ fun DownloadCard(
                 }
             }
             DownloadStatus.COMPLETED -> {
-                Icon(
-                    Icons.Rounded.CheckCircle,
-                    contentDescription = "Completed",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp),
-                )
+                IconButton(onClick = onHide, modifier = Modifier.size(36.dp)) {
+                    Icon(
+                        Icons.Rounded.VisibilityOff,
+                        contentDescription = "Hide",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
             }
             DownloadStatus.FAILED -> {
                 IconButton(onClick = onRetry, modifier = Modifier.size(36.dp)) {

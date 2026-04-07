@@ -34,4 +34,12 @@ class SettingsViewModel @Inject constructor(
     fun setAutoSubfolder(v: Boolean) { viewModelScope.launch { prefs.setAutoSubfolder(v) } }
     fun setClipboardMonitor(v: Boolean) { viewModelScope.launch { prefs.setClipboardMonitor(v) } }
     fun setDownloadDir(uri: String) { viewModelScope.launch { prefs.setDownloadDir(uri) } }
+
+    val appLock = prefs.appLock
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    val hideFromGallery = prefs.hideFromGallery
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    fun setAppLock(v: Boolean) { viewModelScope.launch { prefs.setAppLock(v) } }
+    fun setHideFromGallery(v: Boolean) { viewModelScope.launch { prefs.setHideFromGallery(v) } }
 }

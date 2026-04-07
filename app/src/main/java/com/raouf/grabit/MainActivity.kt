@@ -3,15 +3,18 @@ package com.raouf.grabit
 import android.content.ClipboardManager
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.rememberNavController
 import com.raouf.grabit.data.prefs.UserPreferences
+import com.raouf.grabit.data.security.BiometricHelper
 import com.raouf.grabit.ui.navigation.GrabitNavGraph
 import com.raouf.grabit.ui.navigation.Routes
 import com.raouf.grabit.ui.theme.GrabitTheme
@@ -22,19 +25,35 @@ import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
 
     @Inject lateinit var prefs: UserPreferences
 
     private var sharedUrl by mutableStateOf<String?>(null)
     private var clipboardUrl by mutableStateOf<String?>(null)
     private var isDarkTheme by mutableStateOf(true)
-    private var onboardingDone by mutableStateOf(true) // default true to avoid flash
+    private var onboardingDone by mutableStateOf(true)
+    private var isUnlocked by mutableStateOf(false)
     private var lastClipboardText: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // App lock check
+        val appLockEnabled = runBlocking { prefs.appLock.first() }
+        if (appLockEnabled && BiometricHelper.isAvailable(this)) {
+            isUnlocked = false
+            BiometricHelper.authenticate(
+                activity = this,
+                title = "Unlock Grab'it",
+                subtitle = "Verify to access your downloads",
+                onSuccess = { isUnlocked = true },
+                onError = { finish() },
+            )
+        } else {
+            isUnlocked = true
+        }
 
         // Read initial state synchronously to avoid UI flash
         runBlocking {
@@ -52,6 +71,16 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             GrabitTheme(darkTheme = isDarkTheme) {
+                if (!isUnlocked) {
+                    // Show blank screen while waiting for biometric
+                    androidx.compose.foundation.layout.Box(
+                        modifier = androidx.compose.ui.Modifier
+                            .fillMaxSize()
+                            .background(androidx.compose.material3.MaterialTheme.colorScheme.background),
+                    )
+                    return@GrabitTheme
+                }
+
                 val navController = rememberNavController()
 
                 val startDest = if (onboardingDone) Routes.HOME else Routes.ONBOARDING

@@ -10,14 +10,23 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface DownloadDao {
 
-    @Query("SELECT * FROM downloads ORDER BY createdAt DESC")
+    @Query("SELECT * FROM downloads WHERE isHidden = 0 ORDER BY createdAt DESC")
     fun observeAll(): Flow<List<DownloadEntity>>
 
-    @Query("SELECT * FROM downloads WHERE status IN ('EXTRACTING','QUEUED','DOWNLOADING','PAUSED','WAITING_NETWORK') ORDER BY createdAt DESC")
+    @Query("SELECT * FROM downloads WHERE isHidden = 0 AND status IN ('EXTRACTING','QUEUED','DOWNLOADING','PAUSED','WAITING_NETWORK') ORDER BY createdAt DESC")
     fun observeActive(): Flow<List<DownloadEntity>>
 
-    @Query("SELECT * FROM downloads WHERE status = 'COMPLETED' ORDER BY completedAt DESC")
+    @Query("SELECT * FROM downloads WHERE isHidden = 0 AND status = 'COMPLETED' ORDER BY completedAt DESC")
     fun observeCompleted(): Flow<List<DownloadEntity>>
+
+    @Query("SELECT * FROM downloads WHERE isHidden = 1 ORDER BY createdAt DESC")
+    fun observeHidden(): Flow<List<DownloadEntity>>
+
+    @Query("UPDATE downloads SET isHidden = 1 WHERE id = :id")
+    suspend fun hide(id: Long)
+
+    @Query("UPDATE downloads SET isHidden = 0 WHERE id = :id")
+    suspend fun unhide(id: Long)
 
     @Query("SELECT * FROM downloads WHERE id = :id")
     suspend fun getById(id: Long): DownloadEntity?
