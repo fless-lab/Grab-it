@@ -1,24 +1,42 @@
 package com.raouf.grabit
 
+import android.app.DownloadManager
+import android.content.BroadcastReceiver
 import android.content.ClipboardManager
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.rememberNavController
 import com.raouf.grabit.data.prefs.UserPreferences
 import com.raouf.grabit.data.security.BiometricHelper
+import com.raouf.grabit.data.updater.AppUpdate
+import com.raouf.grabit.data.updater.AppUpdateChecker
 import com.raouf.grabit.ui.navigation.GrabitNavGraph
 import com.raouf.grabit.ui.navigation.Routes
 import com.raouf.grabit.ui.theme.GrabitTheme
+import com.raouf.grabit.ui.update.UpdateBanner
+import com.raouf.grabit.ui.update.installApk
+import com.raouf.grabit.ui.update.registerDownloadReceiver
+import com.raouf.grabit.ui.update.startApkDownload
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -28,6 +46,7 @@ import javax.inject.Inject
 class MainActivity : FragmentActivity() {
 
     @Inject lateinit var prefs: UserPreferences
+    @Inject lateinit var updateChecker: AppUpdateChecker
 
     private var sharedUrl by mutableStateOf<String?>(null)
     private var clipboardUrl by mutableStateOf<String?>(null)
@@ -35,6 +54,14 @@ class MainActivity : FragmentActivity() {
     private var onboardingDone by mutableStateOf(true)
     private var isUnlocked by mutableStateOf(false)
     private var lastClipboardText: String? = null
+
+    // Auto-update state
+    private var pendingUpdate by mutableStateOf<AppUpdate?>(null)
+    private var updateDownloading by mutableStateOf(false)
+    private var updateReady by mutableStateOf(false)
+    private var updateProgress by mutableFloatStateOf(0f)
+    private var updateDownloadId by mutableLongStateOf(-1L)
+    private var downloadReceiver: BroadcastReceiver? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,43 +93,106 @@ class MainActivity : FragmentActivity() {
             prefs.darkTheme.collect { isDarkTheme = it }
         }
 
+        // Silent update check
+        lifecycleScope.launch(Dispatchers.IO) {
+            val update = updateChecker.check() ?: return@launch
+            pendingUpdate = update
+            // Auto-download silently
+            updateDownloading = true
+            updateDownloadId = startApkDownload(
+                this@MainActivity, update.apkUrl, update.versionName,
+            )
+            // Register completion listener
+            downloadReceiver = registerDownloadReceiver(
+                this@MainActivity, updateDownloadId,
+            ) {
+                updateDownloading = false
+                updateReady = true
+            }
+            // Poll progress
+            val dm = getSystemService(DownloadManager::class.java)
+            while (updateDownloading) {
+                val query = DownloadManager.Query().setFilterById(updateDownloadId)
+                val cursor = dm.query(query)
+                if (cursor != null && cursor.moveToFirst()) {
+                    val downloaded = cursor.getLong(
+                        cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR),
+                    )
+                    val total = cursor.getLong(
+                        cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES),
+                    )
+                    if (total > 0) updateProgress = downloaded.toFloat() / total
+                    cursor.close()
+                }
+                delay(500)
+            }
+        }
+
         // Handle share intent
         handleIntent(intent)
 
         setContent {
             GrabitTheme(darkTheme = isDarkTheme) {
                 if (!isUnlocked) {
-                    // Show blank screen while waiting for biometric
-                    androidx.compose.foundation.layout.Box(
-                        modifier = androidx.compose.ui.Modifier
+                    Box(
+                        modifier = Modifier
                             .fillMaxSize()
-                            .background(androidx.compose.material3.MaterialTheme.colorScheme.background),
+                            .background(MaterialTheme.colorScheme.background),
                     )
                     return@GrabitTheme
                 }
 
-                val navController = rememberNavController()
+                Box(modifier = Modifier.fillMaxSize()) {
+                    val navController = rememberNavController()
+                    val startDest = if (onboardingDone) Routes.HOME else Routes.ONBOARDING
 
-                val startDest = if (onboardingDone) Routes.HOME else Routes.ONBOARDING
-
-                GrabitNavGraph(
-                    navController = navController,
-                    sharedUrl = sharedUrl,
-                    onSharedUrlConsumed = { sharedUrl = null },
-                    clipboardUrl = clipboardUrl,
-                    onDismissClipboard = { clipboardUrl = null },
-                    startDestination = startDest,
-                    onOnboardingComplete = { folderUri ->
-                        lifecycleScope.launch {
-                            if (folderUri != null) {
-                                prefs.setDownloadDir(folderUri)
+                    GrabitNavGraph(
+                        navController = navController,
+                        sharedUrl = sharedUrl,
+                        onSharedUrlConsumed = { sharedUrl = null },
+                        clipboardUrl = clipboardUrl,
+                        onDismissClipboard = { clipboardUrl = null },
+                        startDestination = startDest,
+                        onOnboardingComplete = { folderUri ->
+                            lifecycleScope.launch {
+                                if (folderUri != null) {
+                                    prefs.setDownloadDir(folderUri)
+                                }
+                                prefs.setOnboardingDone()
+                                onboardingDone = true
                             }
-                            prefs.setOnboardingDone()
-                            onboardingDone = true
-                        }
-                    },
-                )
+                        },
+                    )
+
+                    // Update banner at bottom
+                    val update = pendingUpdate
+                    if (update != null) {
+                        UpdateBanner(
+                            visible = updateDownloading || updateReady,
+                            downloading = updateDownloading,
+                            ready = updateReady,
+                            versionName = update.versionName,
+                            progress = updateProgress,
+                            onClick = {
+                                if (updateReady) {
+                                    installApk(this@MainActivity, updateDownloadId)
+                                }
+                            },
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .fillMaxWidth()
+                                .navigationBarsPadding(),
+                        )
+                    }
+                }
             }
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        downloadReceiver?.let {
+            try { unregisterReceiver(it) } catch (_: Exception) {}
         }
     }
 
@@ -129,7 +219,6 @@ class MainActivity : FragmentActivity() {
                 }
             }
             Intent.ACTION_VIEW -> {
-                // Deep link: URL is in intent.data
                 val url = intent.data?.toString()
                 if (!url.isNullOrBlank()) {
                     sharedUrl = url
@@ -154,7 +243,6 @@ class MainActivity : FragmentActivity() {
             val match = urlPattern.find(text) ?: return@launch
             val url = match.value
 
-            // Check if it looks like a video URL
             val videoHosts = listOf("youtube.com", "youtu.be", "facebook.com", "fb.watch",
                 "instagram.com", "tiktok.com", "twitter.com", "x.com", "linkedin.com")
             if (videoHosts.none { it in url.lowercase() }) return@launch
