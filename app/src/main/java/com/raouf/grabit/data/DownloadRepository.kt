@@ -99,4 +99,8 @@ class DownloadRepository @Inject constructor(
     suspend fun hideDownload(id: Long) = dao.hide(id)
 
     suspend fun unhideDownload(id: Long) = dao.unhide(id)
+
+    // Stats
+    suspend fun completedCount(): Int = dao.completedCount()
+    suspend fun totalDownloadedBytes(): Long = dao.totalDownloadedBytes()
 }

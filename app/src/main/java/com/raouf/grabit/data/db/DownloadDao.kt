@@ -69,4 +69,10 @@ interface DownloadDao {
 
     @Query("DELETE FROM downloads WHERE status = 'COMPLETED'")
     suspend fun clearCompleted()
+
+    @Query("SELECT COUNT(*) FROM downloads WHERE status = 'COMPLETED'")
+    suspend fun completedCount(): Int
+
+    @Query("SELECT COALESCE(SUM(fileSize), 0) FROM downloads WHERE status = 'COMPLETED'")
+    suspend fun totalDownloadedBytes(): Long
 }

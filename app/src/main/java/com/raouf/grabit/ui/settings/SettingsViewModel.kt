@@ -2,9 +2,12 @@ package com.raouf.grabit.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.raouf.grabit.data.DownloadRepository
 import com.raouf.grabit.data.prefs.UserPreferences
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -12,7 +15,21 @@ import javax.inject.Inject
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val prefs: UserPreferences,
+    private val repository: DownloadRepository,
 ) : ViewModel() {
+
+    private val _totalDownloads = MutableStateFlow(0)
+    val totalDownloads = _totalDownloads.asStateFlow()
+
+    private val _totalBytes = MutableStateFlow(0L)
+    val totalBytes = _totalBytes.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            _totalDownloads.value = repository.completedCount()
+            _totalBytes.value = repository.totalDownloadedBytes()
+        }
+    }
 
     val darkTheme = prefs.darkTheme
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)

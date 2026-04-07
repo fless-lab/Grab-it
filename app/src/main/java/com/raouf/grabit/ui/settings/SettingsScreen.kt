@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -56,6 +57,8 @@ fun SettingsScreen(
     val appLock by viewModel.appLock.collectAsStateWithLifecycle()
     val hideFromGallery by viewModel.hideFromGallery.collectAsStateWithLifecycle()
     val autoUpdate by viewModel.autoUpdate.collectAsStateWithLifecycle()
+    val totalDownloads by viewModel.totalDownloads.collectAsStateWithLifecycle()
+    val totalBytes by viewModel.totalBytes.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
 
@@ -218,6 +221,19 @@ fun SettingsScreen(
 
             Spacer(Modifier.height(24.dp))
 
+            // Stats
+            SectionLabel("STATISTICS")
+            Spacer(Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+            ) {
+                StatItem("Downloads", "$totalDownloads")
+                StatItem("Storage", formatSize(totalBytes))
+            }
+
+            Spacer(Modifier.height(24.dp))
+
             // About
             SectionLabel("ABOUT")
             Spacer(Modifier.height(8.dp))
@@ -313,4 +329,30 @@ private fun SettingToggle(
             ),
         )
     }
+}
+
+@Composable
+private fun StatItem(label: String, value: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            value,
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        Text(
+            label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+private fun formatSize(bytes: Long): String {
+    if (bytes < 1024) return "$bytes B"
+    val kb = bytes / 1024.0
+    if (kb < 1024) return "%.1f KB".format(kb)
+    val mb = kb / 1024.0
+    if (mb < 1024) return "%.1f MB".format(mb)
+    val gb = mb / 1024.0
+    return "%.2f GB".format(gb)
 }

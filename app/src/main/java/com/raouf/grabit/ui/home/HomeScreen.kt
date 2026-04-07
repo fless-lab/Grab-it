@@ -23,7 +23,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Language
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
@@ -45,6 +47,8 @@ import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberSwipeToDismissBoxState
@@ -56,6 +60,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -84,10 +89,27 @@ fun HomeScreen(
     val completedItems by viewModel.completedItems.collectAsStateWithLifecycle()
     val progressMap by viewModel.progressMap.collectAsStateWithLifecycle()
 
-    val displayList = when (currentTab) {
-        HomeTab.ALL -> allItems
-        HomeTab.ACTIVE -> activeItems
-        HomeTab.COMPLETED -> completedItems
+    var searchQuery by remember { mutableStateOf("") }
+    var searchVisible by remember { mutableStateOf(false) }
+
+    val displayList = run {
+        val tabList = when (currentTab) {
+            HomeTab.ALL -> allItems
+            HomeTab.ACTIVE -> activeItems
+            HomeTab.COMPLETED -> completedItems
+        }
+        if (searchQuery.isBlank()) tabList
+        else {
+            val q = searchQuery.lowercase()
+            tabList.filter { item ->
+                when (item) {
+                    is DownloadItem.Single -> item.download.title.lowercase().contains(q) ||
+                        item.download.source.lowercase().contains(q)
+                    is DownloadItem.PlaylistGroup -> item.title.lowercase().contains(q) ||
+                        item.downloads.any { it.title.lowercase().contains(q) }
+                }
+            }
+        }
     }
 
     var urlInput by remember { mutableStateOf("") }
@@ -295,33 +317,65 @@ fun HomeScreen(
         // Top bar
         TopAppBar(
             title = {
-                Text(
-                    text = "Grab'it",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
+                if (searchVisible) {
+                    TextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        placeholder = { Text("Search downloads...") },
+                        singleLine = true,
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                } else {
+                    Text(
+                        text = "Grab'it",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+                }
             },
             actions = {
-                IconButton(onClick = onNavigateToSafeZone) {
+                IconButton(onClick = {
+                    if (searchVisible) {
+                        searchQuery = ""
+                        searchVisible = false
+                    } else {
+                        searchVisible = true
+                    }
+                }) {
                     Icon(
-                        Icons.Rounded.Lock,
-                        contentDescription = "Safe Zone",
+                        if (searchVisible) Icons.Rounded.Close else Icons.Rounded.Search,
+                        contentDescription = "Search",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                IconButton(onClick = onNavigateToBrowser) {
-                    Icon(
-                        Icons.Rounded.Language,
-                        contentDescription = "Browser",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                IconButton(onClick = onNavigateToSettings) {
-                    Icon(
-                        Icons.Rounded.Settings,
-                        contentDescription = "Settings",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                if (!searchVisible) {
+                    IconButton(onClick = onNavigateToSafeZone) {
+                        Icon(
+                            Icons.Rounded.Lock,
+                            contentDescription = "Safe Zone",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    IconButton(onClick = onNavigateToBrowser) {
+                        Icon(
+                            Icons.Rounded.Language,
+                            contentDescription = "Browser",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(
+                            Icons.Rounded.Settings,
+                            contentDescription = "Settings",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             },
             colors = TopAppBarDefaults.topAppBarColors(
