@@ -30,7 +30,7 @@ class AppUpdateChecker @Inject constructor(
     companion object {
         private const val TAG = "AppUpdateChecker"
         private const val VERSION_URL =
-            "https://raw.githubusercontent.com/raoufatm/grabit/main/version.json"
+            "https://raw.githubusercontent.com/fless-lab/Grab-it/main/version.json"
     }
 
     /**
