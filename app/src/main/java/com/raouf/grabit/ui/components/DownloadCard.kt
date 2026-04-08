@@ -294,22 +294,13 @@ fun DownloadCard(
                 }
             }
             DownloadStatus.COMPLETED -> {
-                IconButton(onClick = onShare, modifier = Modifier.size(36.dp)) {
-                    Icon(
-                        Icons.Rounded.Share,
-                        contentDescription = "Share",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
-                IconButton(onClick = onHide, modifier = Modifier.size(36.dp)) {
-                    Icon(
-                        Icons.Rounded.VisibilityOff,
-                        contentDescription = "Hide",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
+                // Share & Hide available via long press context menu
+                Icon(
+                    Icons.Rounded.CheckCircle,
+                    contentDescription = "Completed",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(18.dp),
+                )
             }
             DownloadStatus.FAILED -> {
                 IconButton(onClick = onRetry, modifier = Modifier.size(36.dp)) {
