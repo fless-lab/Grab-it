@@ -59,11 +59,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.session.MediaSession
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.raouf.grabit.GrabitApp
@@ -110,6 +112,7 @@ class PlayerActivity : ComponentActivity() {
     }
 
     private var exoPlayer: ExoPlayer? = null
+    private var mediaSession: MediaSession? = null
     private var isInPip by mutableStateOf(false)
     private var playbackError by mutableStateOf<String?>(null)
     private var isLoading by mutableStateOf(false)
@@ -174,6 +177,9 @@ class PlayerActivity : ComponentActivity() {
         }
         exoPlayer = player
 
+        // MediaSession: enables system media notification (play/pause/seek in notification bar)
+        mediaSession = MediaSession.Builder(this, player).build()
+
         if (streaming && videoUrl != null) {
             // Streaming mode: CDN only (local temp file lacks audio during download)
             player.addListener(object : Player.Listener {
@@ -187,7 +193,13 @@ class PlayerActivity : ComponentActivity() {
                 try {
                     val streamUrl = extractStreamUrl(videoUrl)
                     Log.d(TAG, "Streaming from CDN")
-                    player.setMediaItem(MediaItem.fromUri(Uri.parse(streamUrl)))
+                    val metadata = MediaMetadata.Builder()
+                        .setTitle(title)
+                        .apply { if (thumbnail != null) setArtworkUri(Uri.parse(thumbnail)) }
+                        .build()
+                    player.setMediaItem(
+                        MediaItem.Builder().setUri(Uri.parse(streamUrl)).setMediaMetadata(metadata).build()
+                    )
                     player.prepare()
                     player.playWhenReady = true
                     isLoading = false
@@ -225,7 +237,13 @@ class PlayerActivity : ComponentActivity() {
             })
             val uri = buildFileUri(filePath)
             Log.d(TAG, "Playing local file: $filePath -> $uri")
-            player.setMediaItem(MediaItem.fromUri(uri))
+            val metadata = MediaMetadata.Builder()
+                .setTitle(title)
+                .apply { if (thumbnail != null) setArtworkUri(Uri.parse(thumbnail)) }
+                .build()
+            player.setMediaItem(
+                MediaItem.Builder().setUri(uri).setMediaMetadata(metadata).build()
+            )
             player.prepare()
             player.playWhenReady = true
         }
@@ -557,6 +575,8 @@ class PlayerActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        mediaSession?.release()
+        mediaSession = null
         exoPlayer?.release()
         exoPlayer = null
         scope.cancel()
