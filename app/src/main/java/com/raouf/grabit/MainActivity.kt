@@ -211,6 +211,8 @@ class MainActivity : FragmentActivity() {
 
     private fun handleIntent(intent: Intent?) {
         val url: String? = when (intent?.action) {
+            // ACTION_SEND is routed through ShareReceiverActivity (handles quick mode there)
+            // but arrives here when quick mode is OFF (forwarded by ShareReceiverActivity)
             Intent.ACTION_SEND -> {
                 if (intent.type == "text/plain") {
                     val text = intent.getStringExtra(Intent.EXTRA_TEXT)
@@ -220,20 +222,24 @@ class MainActivity : FragmentActivity() {
                     } else null
                 } else null
             }
-            Intent.ACTION_VIEW -> intent.data?.toString()
+            // Deep links (ACTION_VIEW) come directly to MainActivity
+            Intent.ACTION_VIEW -> {
+                val deepUrl = intent.data?.toString()
+                if (!deepUrl.isNullOrBlank()) {
+                    val quickMode = runBlocking { prefs.quickMode.first() }
+                    if (quickMode) {
+                        Toast.makeText(this, "Downloading...", Toast.LENGTH_SHORT).show()
+                        com.raouf.grabit.service.DownloadService.quickDownload(this, deepUrl)
+                        return
+                    }
+                }
+                deepUrl
+            }
             else -> null
         }
 
         if (url.isNullOrBlank()) return
-
-        // Quick mode: start download immediately, skip preview
-        val quickMode = runBlocking { prefs.quickMode.first() }
-        if (quickMode) {
-            Toast.makeText(this, "Downloading...", Toast.LENGTH_SHORT).show()
-            com.raouf.grabit.service.DownloadService.quickDownload(this, url)
-        } else {
-            sharedUrl = url
-        }
+        sharedUrl = url
     }
 
     private fun checkClipboard() {

@@ -147,10 +147,16 @@ class DownloadService : Service() {
                         Log.d(TAG, "Quick download starting queue processing")
                         processQueue()
                     } else {
-                        Log.e(TAG, "Quick download failed after 3 attempts: ${lastError?.message}", lastError)
-                        showErrorNotification(
-                            "Download failed: ${com.raouf.grabit.data.downloader.ErrorParser.friendlyMessage(lastError?.message)}"
-                        )
+                        val msg = com.raouf.grabit.data.downloader.ErrorParser.friendlyMessage(lastError?.message)
+                        Log.e(TAG, "Quick download failed after 3 attempts: $msg", lastError)
+                        showErrorNotification("Download failed: $msg")
+                        // Also show toast (notification can be missed)
+                        android.os.Handler(android.os.Looper.getMainLooper()).post {
+                            android.widget.Toast.makeText(
+                                this@DownloadService, "Download failed: $msg",
+                                android.widget.Toast.LENGTH_LONG,
+                            ).show()
+                        }
                         if (activeDownloads.isEmpty()) stopSelf()
                     }
                 }
