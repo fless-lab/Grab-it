@@ -34,6 +34,7 @@ import com.raouf.grabit.ui.update.UpdateBanner
 import com.raouf.grabit.ui.update.installApk
 import com.raouf.grabit.ui.update.registerDownloadReceiver
 import com.raouf.grabit.ui.update.startApkDownload
+import android.widget.Toast
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -209,23 +210,29 @@ class MainActivity : FragmentActivity() {
     }
 
     private fun handleIntent(intent: Intent?) {
-        when (intent?.action) {
+        val url: String? = when (intent?.action) {
             Intent.ACTION_SEND -> {
                 if (intent.type == "text/plain") {
                     val text = intent.getStringExtra(Intent.EXTRA_TEXT)
                     if (text != null) {
                         val urlPattern = Regex("https?://\\S+")
-                        val match = urlPattern.find(text)
-                        sharedUrl = match?.value ?: text
-                    }
-                }
+                        urlPattern.find(text)?.value ?: text
+                    } else null
+                } else null
             }
-            Intent.ACTION_VIEW -> {
-                val url = intent.data?.toString()
-                if (!url.isNullOrBlank()) {
-                    sharedUrl = url
-                }
-            }
+            Intent.ACTION_VIEW -> intent.data?.toString()
+            else -> null
+        }
+
+        if (url.isNullOrBlank()) return
+
+        // Quick mode: start download immediately, skip preview
+        val quickMode = runBlocking { prefs.quickMode.first() }
+        if (quickMode) {
+            Toast.makeText(this, "Downloading...", Toast.LENGTH_SHORT).show()
+            com.raouf.grabit.service.DownloadService.quickDownload(this, url)
+        } else {
+            sharedUrl = url
         }
     }
 

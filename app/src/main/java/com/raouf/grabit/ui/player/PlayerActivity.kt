@@ -145,25 +145,12 @@ class PlayerActivity : ComponentActivity() {
         }
         registerReceiver(pipReceiver, filter, RECEIVER_NOT_EXPORTED)
 
-        // Track if this is a fallback attempt (local file after CDN failed)
-        var isFallbackAttempt = false
+        // Track fallback state
+        var fallbackAttempted = false
 
-        // Create player
+        // Create player (no error listener here, added per-mode below)
         val player = ExoPlayer.Builder(this).build().apply {
             addListener(object : Player.Listener {
-                override fun onPlayerError(error: PlaybackException) {
-                    if (isFallbackAttempt) {
-                        // Local file also failed: show toast and close
-                        Toast.makeText(
-                            this@PlayerActivity,
-                            "Video not playable yet. Try again later.",
-                            Toast.LENGTH_SHORT,
-                        ).show()
-                        finish()
-                    } else {
-                        playbackError = "Playback error: ${error.localizedMessage}"
-                    }
-                }
                 override fun onVideoSizeChanged(videoSize: VideoSize) {
                     if (videoSize.width > 0 && videoSize.height > 0) {
                         videoAspectRatio = Rational(videoSize.width, videoSize.height)
@@ -177,7 +164,21 @@ class PlayerActivity : ComponentActivity() {
         exoPlayer = player
 
         if (streaming && videoUrl != null) {
-            // Streaming mode: extract direct CDN URL, then stream
+            // Streaming mode: extract CDN URL, fallback to local file on error
+            player.addListener(object : Player.Listener {
+                override fun onPlayerError(error: PlaybackException) {
+                    if (!fallbackAttempted && filePath.isNotBlank()) {
+                        Log.w(TAG, "Stream playback failed, trying local file: ${error.message}")
+                        fallbackAttempted = true
+                        val uri = buildFileUri(filePath)
+                        player.setMediaItem(MediaItem.fromUri(uri))
+                        player.prepare()
+                        player.playWhenReady = true
+                    } else {
+                        playbackError = "Playback error: ${error.localizedMessage}"
+                    }
+                }
+            })
             isLoading = true
             scope.launch {
                 try {
@@ -188,9 +189,8 @@ class PlayerActivity : ComponentActivity() {
                     isLoading = false
                 } catch (e: Exception) {
                     Log.e(TAG, "Stream URL extraction failed: ${e.message}")
-                    // Fallback: try local file (works for direct downloads, e.g. 87% of a non-DASH video)
                     if (filePath.isNotBlank()) {
-                        isFallbackAttempt = true
+                        fallbackAttempted = true
                         val uri = buildFileUri(filePath)
                         player.setMediaItem(MediaItem.fromUri(uri))
                         player.prepare()
@@ -198,22 +198,17 @@ class PlayerActivity : ComponentActivity() {
                         isLoading = false
                     } else {
                         isLoading = false
-                        Toast.makeText(
-                            this@PlayerActivity,
-                            "No connection. Video not available offline yet.",
-                            Toast.LENGTH_SHORT,
-                        ).show()
-                        finish()
+                        playbackError = "Cannot play: no connection and no local file"
                     }
                 }
             }
         } else {
-            // Normal mode: play from local file, fallback to CDN on error
+            // Normal mode: play local file, fallback to CDN on error
             player.addListener(object : Player.Listener {
                 override fun onPlayerError(error: PlaybackException) {
-                    if (!isFallbackAttempt && videoUrl != null) {
+                    if (!fallbackAttempted && videoUrl != null) {
                         Log.w(TAG, "Local playback failed, trying CDN: ${error.message}")
-                        isFallbackAttempt = true
+                        fallbackAttempted = true
                         playbackError = null
                         isLoading = true
                         scope.launch {
@@ -228,10 +223,13 @@ class PlayerActivity : ComponentActivity() {
                                 playbackError = "Playback error: ${error.localizedMessage}"
                             }
                         }
+                    } else {
+                        playbackError = "Playback error: ${error.localizedMessage}"
                     }
                 }
             })
             val uri = buildFileUri(filePath)
+            Log.d(TAG, "Playing local file: $filePath -> $uri")
             player.setMediaItem(MediaItem.fromUri(uri))
             player.prepare()
             player.playWhenReady = true
