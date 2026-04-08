@@ -10,6 +10,8 @@
 
 # Apache Commons Compress (used by yt-dlp via reflection)
 -keep class org.apache.commons.compress.** { *; }
+-dontwarn org.apache.commons.compress.**
+-dontwarn org.tukaani.xz.**
 
 # Room
 -keep class * extends androidx.room.RoomDatabase
