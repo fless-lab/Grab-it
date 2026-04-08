@@ -1,9 +1,7 @@
 package com.raouf.grabit.ui.onboarding
 
 import android.Manifest
-import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -22,7 +20,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Download
-import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -64,21 +61,6 @@ fun OnboardingScreen(
         notifGranted = granted
     }
 
-    var folderSelected by remember { mutableStateOf(false) }
-
-    val dirPicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocumentTree(),
-    ) { uri: Uri? ->
-        uri?.let {
-            context.contentResolver.takePersistableUriPermission(
-                it,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
-            )
-            onFolderSelected(it.toString())
-            folderSelected = true
-        }
-    }
-
     val needsNotifPermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
 
     Column(
@@ -114,10 +96,9 @@ fun OnboardingScreen(
             textAlign = TextAlign.Center,
         )
 
-        Spacer(Modifier.height(48.dp))
-
-        // Notification permission
         if (needsNotifPermission) {
+            Spacer(Modifier.height(48.dp))
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -143,7 +124,7 @@ fun OnboardingScreen(
                         color = MaterialTheme.colorScheme.onBackground,
                     )
                     Text(
-                        text = "See download progress and media controls",
+                        text = "Download progress and media controls",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -162,53 +143,6 @@ fun OnboardingScreen(
                     ) {
                         Text("Allow", style = MaterialTheme.typography.labelMedium)
                     }
-                }
-            }
-
-            Spacer(Modifier.height(16.dp))
-        }
-
-        // Storage folder (optional)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    RoundedCornerShape(12.dp),
-                )
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                if (folderSelected) Icons.Rounded.CheckCircle else Icons.Rounded.Folder,
-                contentDescription = null,
-                tint = if (folderSelected) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(24.dp),
-            )
-            Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = if (folderSelected) "Folder selected" else "Save location",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-                Text(
-                    text = if (folderSelected) "Custom folder set" else "Default: Downloads/Grabit",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            if (!folderSelected) {
-                Button(
-                    onClick = { dirPicker.launch(null) },
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        contentColor = MaterialTheme.colorScheme.onSurface,
-                    ),
-                ) {
-                    Text("Change", style = MaterialTheme.typography.labelMedium)
                 }
             }
         }
