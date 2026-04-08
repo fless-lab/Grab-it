@@ -37,6 +37,7 @@ class DownloadService : Service() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val activeDownloads = mutableSetOf<Long>()
+    private var quickDownloadInProgress = false
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
 
     companion object {
@@ -113,10 +114,11 @@ class DownloadService : Service() {
             ACTION_QUICK -> {
                 val url = intent.getStringExtra(EXTRA_URL) ?: return START_NOT_STICKY
                 Log.d(TAG, "Quick download requested: $url")
+                // Prevent processQueue from stopping the service during extraction
+                quickDownloadInProgress = true
                 scope.launch {
                     updateNotification("Downloading...")
 
-                    // Try extraction up to 3 times silently
                     var lastError: Exception? = null
                     var success = false
                     for (attempt in 1..3) {
@@ -136,12 +138,16 @@ class DownloadService : Service() {
                             Log.d(TAG, "Quick download created: id=$id")
                             success = true
                             break
+                        } catch (e: kotlinx.coroutines.CancellationException) {
+                            throw e // Never swallow cancellation
                         } catch (e: Exception) {
                             Log.e(TAG, "Quick extract attempt $attempt failed: ${e.message}")
                             lastError = e
                             if (attempt < 3) kotlinx.coroutines.delay(1500)
                         }
                     }
+
+                    quickDownloadInProgress = false
 
                     if (success) {
                         Log.d(TAG, "Quick download starting queue processing")
@@ -150,7 +156,6 @@ class DownloadService : Service() {
                         val msg = com.raouf.grabit.data.downloader.ErrorParser.friendlyMessage(lastError?.message)
                         Log.e(TAG, "Quick download failed after 3 attempts: $msg", lastError)
                         showErrorNotification("Download failed: $msg")
-                        // Also show toast (notification can be missed)
                         android.os.Handler(android.os.Looper.getMainLooper()).post {
                             android.widget.Toast.makeText(
                                 this@DownloadService, "Download failed: $msg",
@@ -217,7 +222,7 @@ class DownloadService : Service() {
             if (dl.id in activeDownloads) continue
             launchDownload(dl.id, dl.url, dl.title, dl.source, dl.formatId, dl.isAudioOnly, dl.subLangs)
         }
-        if (activeDownloads.isEmpty() && queued.isEmpty()) {
+        if (activeDownloads.isEmpty() && queued.isEmpty() && !quickDownloadInProgress) {
             updateNotification("All downloads complete")
             stopSelf()
         }
