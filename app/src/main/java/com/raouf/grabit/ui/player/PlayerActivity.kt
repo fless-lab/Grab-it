@@ -353,14 +353,12 @@ class PlayerActivity : ComponentActivity() {
                                 }
                             }
                             isAudioOnly -> {
-                                // Audio player: thumbnail + controls
+                                // Audio player: artwork on top, controls fill remaining space
                                 Column(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(32.dp),
+                                    modifier = Modifier.fillMaxSize(),
                                     horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.Center,
                                 ) {
+                                    Spacer(Modifier.height(48.dp))
                                     // Thumbnail or music icon
                                     Box(
                                         modifier = Modifier
@@ -395,9 +393,10 @@ class PlayerActivity : ComponentActivity() {
                                         textAlign = TextAlign.Center,
                                         maxLines = 2,
                                         overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.padding(horizontal = 32.dp),
                                     )
-                                    Spacer(Modifier.height(32.dp))
-                                    // ExoPlayer controls (seek bar, play/pause)
+                                    Spacer(Modifier.weight(1f))
+                                    // ExoPlayer controls: seek bar, play/pause, time
                                     AndroidView(
                                         factory = { ctx ->
                                             PlayerView(ctx).apply {
@@ -406,15 +405,15 @@ class PlayerActivity : ComponentActivity() {
                                                 setShowBuffering(PlayerView.SHOW_BUFFERING_ALWAYS)
                                                 setBackgroundColor(Color.Transparent.toArgb())
                                                 setShutterBackgroundColor(Color.Transparent.toArgb())
-                                                // Hide the video surface, only show controls
                                                 controllerShowTimeoutMs = 0
                                                 controllerHideOnTouch = false
                                             }
                                         },
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .height(80.dp),
+                                            .height(140.dp),
                                     )
+                                    Spacer(Modifier.height(32.dp))
                                 }
                             }
                             else -> {
