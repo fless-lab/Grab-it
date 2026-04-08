@@ -46,3 +46,9 @@
 # Compose Foundation (combinedClickable etc.)
 -keep class androidx.compose.foundation.** { *; }
 -dontwarn androidx.compose.foundation.**
+
+# FFmpeg
+-keep class com.yausername.ffmpeg.** { *; }
+
+# Keep entire app package (prevent reflection/init surprises)
+-keep class com.raouf.grabit.** { *; }
