@@ -97,97 +97,90 @@ class MainActivity : FragmentActivity() {
 
         // Update check
         lifecycleScope.launch(Dispatchers.IO) {
-            // 1. Check for new version from server
-            val latestUpdate = updateChecker.check()
+            try {
+                // 1. Check for new version from server
+                val latestUpdate = updateChecker.check()
 
-            // 2. Check if a previously downloaded APK is still valid
-            val savedDownloadId = prefs.pendingUpdateDownloadId.first()
-            val savedVersion = prefs.pendingUpdateVersion.first()
-            var savedApkValid = false
+                // 2. Check if a previously downloaded APK is still valid
+                val savedDownloadId = prefs.pendingUpdateDownloadId.first()
+                val savedVersion = prefs.pendingUpdateVersion.first()
+                var savedApkValid = false
 
-            if (savedDownloadId > 0 && savedVersion.isNotBlank()) {
-                // If a newer version exists, discard old APK
-                if (latestUpdate != null && latestUpdate.versionName != savedVersion) {
-                    val dm = getSystemService(DownloadManager::class.java)
-                    dm.remove(savedDownloadId)
-                    prefs.clearPendingUpdate()
-                } else {
-                    // Check if APK file still exists
-                    val dm = getSystemService(DownloadManager::class.java)
-                    val query = DownloadManager.Query().setFilterById(savedDownloadId)
-                    val cursor = dm.query(query)
-                    if (cursor != null && cursor.moveToFirst()) {
-                        val status = cursor.getInt(
-                            cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS),
-                        )
-                        val localUri = cursor.getString(
-                            cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_LOCAL_URI),
-                        )
-                        cursor.close()
-                        if (status == DownloadManager.STATUS_SUCCESSFUL && localUri != null) {
-                            // Verify file actually exists on disk
-                            val file = try { java.io.File(Uri.parse(localUri).path!!) } catch (_: Exception) { null }
-                            if (file?.exists() == true) {
-                                pendingUpdate = AppUpdate(savedVersion, "", "")
-                                updateDownloadId = savedDownloadId
-                                updateReady = true
-                                savedApkValid = true
+                if (savedDownloadId > 0 && savedVersion.isNotBlank()) {
+                    if (latestUpdate != null && latestUpdate.versionName != savedVersion) {
+                        // Newer version exists, discard old APK
+                        try { getSystemService(DownloadManager::class.java).remove(savedDownloadId) } catch (_: Exception) {}
+                        prefs.clearPendingUpdate()
+                    } else {
+                        val dm = getSystemService(DownloadManager::class.java)
+                        val cursor = dm.query(DownloadManager.Query().setFilterById(savedDownloadId))
+                        try {
+                            if (cursor != null && cursor.moveToFirst()) {
+                                val status = cursor.getInt(
+                                    cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS),
+                                )
+                                if (status == DownloadManager.STATUS_SUCCESSFUL) {
+                                    pendingUpdate = AppUpdate(savedVersion, "", "")
+                                    updateDownloadId = savedDownloadId
+                                    updateReady = true
+                                    savedApkValid = true
+                                } else {
+                                    prefs.clearPendingUpdate()
+                                }
                             } else {
-                                // File was deleted manually
-                                dm.remove(savedDownloadId)
                                 prefs.clearPendingUpdate()
                             }
-                        } else {
-                            cursor.close()
-                            prefs.clearPendingUpdate()
+                        } finally {
+                            cursor?.close()
                         }
-                    } else {
-                        cursor?.close()
-                        prefs.clearPendingUpdate()
                     }
                 }
-            }
 
-            // 3. If saved APK is still valid, we're done
-            if (savedApkValid) return@launch
+                // 3. If saved APK is still valid, we're done
+                if (savedApkValid) return@launch
 
-            // 4. No valid saved APK, use latest from server
-            val update = latestUpdate ?: return@launch
-            pendingUpdate = update
+                // 4. No valid saved APK, use latest from server
+                val update = latestUpdate ?: return@launch
+                pendingUpdate = update
 
-            val autoUpdateEnabled = prefs.autoUpdate.first()
-            if (!autoUpdateEnabled) return@launch // show banner only
+                val autoUpdateEnabled = prefs.autoUpdate.first()
+                if (!autoUpdateEnabled) return@launch // show banner only
 
-            // 5. Auto-download
-            updateDownloading = true
-            updateDownloadId = startApkDownload(
-                this@MainActivity, update.apkUrl, update.versionName,
-            )
-            downloadReceiver = registerDownloadReceiver(
-                this@MainActivity, updateDownloadId,
-            ) {
-                updateDownloading = false
-                updateReady = true
-                lifecycleScope.launch(Dispatchers.IO) {
-                    prefs.setPendingUpdate(updateDownloadId, update.versionName)
+                // 5. Auto-download
+                updateDownloading = true
+                updateDownloadId = startApkDownload(
+                    this@MainActivity, update.apkUrl, update.versionName,
+                )
+                downloadReceiver = registerDownloadReceiver(
+                    this@MainActivity, updateDownloadId,
+                ) {
+                    updateDownloading = false
+                    updateReady = true
+                    lifecycleScope.launch(Dispatchers.IO) {
+                        prefs.setPendingUpdate(updateDownloadId, update.versionName)
+                    }
                 }
-            }
-            // Poll progress
-            val dm = getSystemService(DownloadManager::class.java)
-            while (updateDownloading) {
-                val query = DownloadManager.Query().setFilterById(updateDownloadId)
-                val cursor = dm.query(query)
-                if (cursor != null && cursor.moveToFirst()) {
-                    val downloaded = cursor.getLong(
-                        cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR),
-                    )
-                    val total = cursor.getLong(
-                        cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES),
-                    )
-                    if (total > 0) updateProgress = downloaded.toFloat() / total
-                    cursor.close()
+                // Poll progress
+                val dm = getSystemService(DownloadManager::class.java)
+                while (updateDownloading) {
+                    val cursor = dm.query(DownloadManager.Query().setFilterById(updateDownloadId))
+                    try {
+                        if (cursor != null && cursor.moveToFirst()) {
+                            val downloaded = cursor.getLong(
+                                cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR),
+                            )
+                            val total = cursor.getLong(
+                                cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES),
+                            )
+                            if (total > 0) updateProgress = downloaded.toFloat() / total
+                        }
+                    } finally {
+                        cursor?.close()
+                    }
+                    delay(500)
                 }
-                delay(500)
+            } catch (e: Exception) {
+                android.util.Log.e("MainActivity", "Update check failed", e)
             }
         }
 

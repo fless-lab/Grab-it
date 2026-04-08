@@ -31,9 +31,16 @@
 # App models (used by Room/Gson)
 -keep class com.raouf.grabit.domain.model.** { *; }
 
+# Updater models (used by Gson reflection)
+-keep class com.raouf.grabit.data.updater.** { *; }
+
 # Keep Kotlin metadata for reflection
 -keepattributes RuntimeVisibleAnnotations
 -keep class kotlin.Metadata { *; }
 
 # Prevent stripping of Compose
 -dontwarn androidx.compose.**
+
+# Compose Foundation (combinedClickable etc.)
+-keep class androidx.compose.foundation.** { *; }
+-dontwarn androidx.compose.foundation.**
