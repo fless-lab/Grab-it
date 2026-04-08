@@ -46,7 +46,6 @@ import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -144,7 +143,6 @@ fun BrowserScreen(
     var canGoBack by remember { mutableStateOf(false) }
     var canGoForward by remember { mutableStateOf(false) }
     var showHomePage by rememberSaveable { mutableStateOf(initialUrl == null) }
-    var adsBlocked by remember { mutableStateOf(0) }
     var isFocused by remember { mutableStateOf(false) }
 
     val videoDetected = remember(currentUrl) { isVideoPage(currentUrl) }
@@ -346,8 +344,8 @@ fun BrowserScreen(
                                 userAgentString = settings.userAgentString
                                     .replace("; wv", "")
                                 mediaPlaybackRequiresUserGesture = false
-                                cacheMode = WebSettings.LOAD_NO_CACHE
-                                databaseEnabled = false
+                                cacheMode = WebSettings.LOAD_DEFAULT
+                                databaseEnabled = true
                             }
 
                             val wv = this
@@ -363,7 +361,6 @@ fun BrowserScreen(
                                 ): WebResourceResponse? {
                                     val reqUrl = request?.url?.toString() ?: return null
                                     if (AdBlocker.shouldBlock(reqUrl)) {
-                                        adsBlocked++
                                         return AdBlocker.createEmptyResponse()
                                     }
                                     return null
@@ -375,7 +372,6 @@ fun BrowserScreen(
                                     favicon: Bitmap?,
                                 ) {
                                     isLoading = true
-                                    adsBlocked = 0
                                     url?.let {
                                         currentUrl = it
                                         urlBarText = it
@@ -390,15 +386,6 @@ fun BrowserScreen(
                                         currentUrl = it
                                         urlBarText = it
                                     }
-                                    val u = url?.lowercase() ?: ""
-                                    if ("youtube.com" in u || "youtu.be" in u) {
-                                        view?.evaluateJavascript(
-                                            AdBlocker.getYouTubeAdSkipScript(), null,
-                                        )
-                                    }
-                                    view?.evaluateJavascript(
-                                        AdBlocker.getGenericAdCleanScript(), null,
-                                    )
                                 }
 
                                 override fun doUpdateVisitedHistory(
@@ -413,18 +400,17 @@ fun BrowserScreen(
                                         canGoBack = view?.canGoBack() ?: false
                                         canGoForward = view?.canGoForward() ?: false
                                     }
-                                    val u = url?.lowercase() ?: ""
-                                    if ("youtube.com" in u) {
-                                        view?.evaluateJavascript(
-                                            AdBlocker.getYouTubeAdSkipScript(), null,
-                                        )
-                                    }
                                 }
 
                                 override fun shouldOverrideUrlLoading(
                                     view: WebView?,
                                     request: WebResourceRequest?,
-                                ): Boolean = false
+                                ): Boolean {
+                                    val scheme = request?.url?.scheme?.lowercase() ?: return false
+                                    // Block app deep links (snssdk, intent, market, etc.)
+                                    // Only allow http/https in our browser
+                                    return scheme != "http" && scheme != "https"
+                                }
                             }
 
                             webChromeClient = object : WebChromeClient() {
@@ -525,29 +511,6 @@ fun BrowserScreen(
                         )
                     }
 
-                    // Shield badge (ads blocked + incognito)
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f))
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            Icons.Rounded.Shield,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(16.dp),
-                        )
-                        if (adsBlocked > 0) {
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                "$adsBlocked",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary,
-                            )
-                        }
-                    }
                 }
             }
         }
