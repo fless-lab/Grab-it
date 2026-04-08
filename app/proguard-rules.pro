@@ -1,3 +1,7 @@
+# Disable obfuscation (Python/Chaquopy runtime loads classes by name via reflection)
+# Shrinking (unused code removal) still active
+-dontobfuscate
+
 # yt-dlp + Python runtime (Chaquopy)
 -keep class com.yausername.youtubedl_android.** { *; }
 -keep class org.python.** { *; }
