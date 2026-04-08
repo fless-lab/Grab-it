@@ -116,16 +116,19 @@ fun GrabitNavGraph(
                 },
                 onDownloadClick = { download ->
                     if (!download.isAudioOnly) {
-                        val isActive = download.status == DownloadStatus.DOWNLOADING ||
-                            download.status == DownloadStatus.PAUSED
-                        if (isActive) {
-                            // Stream from CDN (works even if local file is partial/DASH)
+                        val isIncomplete = download.status in listOf(
+                            DownloadStatus.DOWNLOADING, DownloadStatus.PAUSED,
+                            DownloadStatus.WAITING_NETWORK, DownloadStatus.QUEUED,
+                            DownloadStatus.FAILED,
+                        )
+                        if (isIncomplete) {
+                            // Stream from CDN (local file may lack audio track)
                             PlayerActivity.launch(
                                 context, download.filePath ?: "", download.title,
                                 streaming = true, videoUrl = download.url,
                             )
                         } else if (download.filePath != null) {
-                            // Play from local file (completed/failed with partial file)
+                            // Play from local file (completed, has both tracks)
                             PlayerActivity.launch(context, download.filePath, download.title)
                         }
                     }
@@ -170,10 +173,13 @@ fun GrabitNavGraph(
                 onBack = { navController.popBackStack() },
                 onDownloadClick = { download ->
                     if (!download.isAudioOnly) {
-                        val isActive = download.status == DownloadStatus.DOWNLOADING ||
-                            download.status == DownloadStatus.PAUSED
-                        if (isActive) {
-                            // Stream from CDN (works even if local file is partial/DASH)
+                        val isIncomplete = download.status in listOf(
+                            DownloadStatus.DOWNLOADING, DownloadStatus.PAUSED,
+                            DownloadStatus.WAITING_NETWORK, DownloadStatus.QUEUED,
+                            DownloadStatus.FAILED,
+                        )
+                        if (isIncomplete) {
+                            // Stream from CDN (local file may lack audio track)
                             PlayerActivity.launch(
                                 context, download.filePath ?: "", download.title,
                                 streaming = true, videoUrl = download.url,
