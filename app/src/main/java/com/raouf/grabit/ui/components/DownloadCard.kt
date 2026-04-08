@@ -144,6 +144,16 @@ fun DownloadCard(
                 }
             }
 
+            // Extracting indicator
+            if (download.status == DownloadStatus.EXTRACTING) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "Extracting video info...",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+
             // Queued indicator
             if (download.status == DownloadStatus.QUEUED && download.progress == 0f) {
                 Spacer(Modifier.height(4.dp))

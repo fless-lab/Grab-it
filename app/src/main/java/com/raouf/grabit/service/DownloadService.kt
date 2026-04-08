@@ -114,10 +114,13 @@ class DownloadService : Service() {
             ACTION_QUICK -> {
                 val url = intent.getStringExtra(EXTRA_URL) ?: return START_NOT_STICKY
                 Log.d(TAG, "Quick download requested: $url")
-                // Prevent processQueue from stopping the service during extraction
                 quickDownloadInProgress = true
                 scope.launch {
-                    updateNotification("Downloading...")
+                    // Create placeholder immediately so a card appears in the UI
+                    val source = VideoSource.fromUrl(url)
+                    val placeholderId = repository.createPlaceholder(url, source)
+                    Log.d(TAG, "Quick placeholder created: id=$placeholderId")
+                    updateNotification("Extracting video info...")
 
                     var lastError: Exception? = null
                     var success = false
@@ -126,20 +129,14 @@ class DownloadService : Service() {
                             Log.d(TAG, "Quick extract attempt $attempt/3")
                             val info = extractor.extract(url, forceRefresh = attempt > 1)
                             Log.d(TAG, "Quick extract success: ${info.title}")
-                            val id = repository.createDownload(
-                                url = info.url,
-                                title = info.title,
-                                thumbnail = info.thumbnail,
-                                source = info.source,
-                                isAudioOnly = false,
-                                quality = "Best",
-                                formatId = "bestvideo+bestaudio/best",
+                            // Update placeholder with real info and set QUEUED
+                            repository.updateFromExtraction(
+                                placeholderId, info.title, info.thumbnail, info.source,
                             )
-                            Log.d(TAG, "Quick download created: id=$id")
                             success = true
                             break
                         } catch (e: kotlinx.coroutines.CancellationException) {
-                            throw e // Never swallow cancellation
+                            throw e
                         } catch (e: Exception) {
                             Log.e(TAG, "Quick extract attempt $attempt failed: ${e.message}")
                             lastError = e
@@ -153,6 +150,8 @@ class DownloadService : Service() {
                         Log.d(TAG, "Quick download starting queue processing")
                         processQueue()
                     } else {
+                        // Remove the placeholder on failure
+                        repository.deleteHistoryOnly(placeholderId)
                         val msg = com.raouf.grabit.data.downloader.ErrorParser.friendlyMessage(lastError?.message)
                         Log.e(TAG, "Quick download failed after 3 attempts: $msg", lastError)
                         showErrorNotification("Download failed: $msg")

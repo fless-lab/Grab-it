@@ -62,6 +62,31 @@ class DownloadRepository @Inject constructor(
         return dao.insert(entity)
     }
 
+    suspend fun createPlaceholder(url: String, source: VideoSource): Long {
+        val entity = DownloadEntity(
+            url = url,
+            title = "Extracting video info...",
+            thumbnail = null,
+            source = source.name,
+            status = DownloadStatus.EXTRACTING.name,
+            quality = "Best",
+            formatId = "bestvideo+bestaudio/best",
+        )
+        return dao.insert(entity)
+    }
+
+    suspend fun updateFromExtraction(
+        id: Long, title: String, thumbnail: String?, source: VideoSource,
+    ) {
+        val entity = dao.getById(id) ?: return
+        dao.update(entity.copy(
+            title = title,
+            thumbnail = thumbnail,
+            source = source.name,
+            status = DownloadStatus.QUEUED.name,
+        ))
+    }
+
     suspend fun deleteHistoryOnly(id: Long) {
         dao.delete(id)
     }
