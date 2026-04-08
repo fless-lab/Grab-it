@@ -1,34 +1,43 @@
 package com.raouf.grabit.ui.onboarding
 
-import android.content.Intent
-import android.net.Uri
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Download
-import androidx.compose.material.icons.rounded.Folder
+import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 
 @Composable
 fun OnboardingScreen(
@@ -37,17 +46,23 @@ fun OnboardingScreen(
 ) {
     val context = LocalContext.current
 
-    val dirPicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocumentTree(),
-    ) { uri: Uri? ->
-        uri?.let {
-            context.contentResolver.takePersistableUriPermission(
-                it,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
-            )
-            onFolderSelected(it.toString())
-        }
+    var notifGranted by remember {
+        mutableStateOf(
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                ContextCompat.checkSelfPermission(
+                    context, Manifest.permission.POST_NOTIFICATIONS,
+                ) == PackageManager.PERMISSION_GRANTED
+            } else true
+        )
     }
+
+    val notifLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        notifGranted = granted
+    }
+
+    val needsNotifPermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
 
     Column(
         modifier = Modifier
@@ -67,8 +82,8 @@ fun OnboardingScreen(
         Spacer(Modifier.height(24.dp))
 
         Text(
-            text = "Welcome to Grab'it",
-            style = MaterialTheme.typography.headlineMedium,
+            text = "Grab'it",
+            style = MaterialTheme.typography.headlineLarge,
             color = MaterialTheme.colorScheme.onBackground,
             textAlign = TextAlign.Center,
         )
@@ -76,24 +91,102 @@ fun OnboardingScreen(
         Spacer(Modifier.height(8.dp))
 
         Text(
-            text = "Download videos from YouTube, Facebook, Instagram, TikTok and more. Just share or paste a link.",
+            text = "Download videos and audio from YouTube, Instagram, TikTok, Facebook and more.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
 
-        Spacer(Modifier.height(40.dp))
+        Spacer(Modifier.height(48.dp))
 
-        Text(
-            text = "Choose where to save your downloads",
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
+        // Notification permission
+        if (needsNotifPermission) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        RoundedCornerShape(12.dp),
+                    )
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    if (notifGranted) Icons.Rounded.CheckCircle else Icons.Rounded.Notifications,
+                    contentDescription = null,
+                    tint = if (notifGranted) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(24.dp),
+                )
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = if (notifGranted) "Notifications enabled" else "Notifications",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+                    Text(
+                        text = "See download progress and media controls",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (!notifGranted) {
+                    Button(
+                        onClick = {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            }
+                        },
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                        ),
+                    ) {
+                        Text("Allow", style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+            }
 
-        Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(16.dp))
+        }
+
+        // Storage info
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    RoundedCornerShape(12.dp),
+                )
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Rounded.CheckCircle,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp),
+            )
+            Spacer(Modifier.width(12.dp))
+            Column {
+                Text(
+                    text = "Storage",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+                Text(
+                    text = "Downloads saved to Downloads/Grabit",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+
+        Spacer(Modifier.height(48.dp))
 
         Button(
-            onClick = { dirPicker.launch(null) },
+            onClick = { onSkip() },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp),
@@ -103,25 +196,7 @@ fun OnboardingScreen(
                 contentColor = MaterialTheme.colorScheme.background,
             ),
         ) {
-            Icon(Icons.Rounded.Folder, null, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.padding(start = 8.dp))
-            Text("Select folder", style = MaterialTheme.typography.titleSmall)
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        OutlinedButton(
-            onClick = onSkip,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
-            shape = RoundedCornerShape(12.dp),
-        ) {
-            Text(
-                "Skip for now",
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Text("Get started", style = MaterialTheme.typography.titleSmall)
         }
     }
 }
