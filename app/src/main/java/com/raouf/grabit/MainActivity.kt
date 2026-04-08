@@ -107,7 +107,12 @@ class MainActivity : FragmentActivity() {
                 var savedApkValid = false
 
                 if (savedDownloadId > 0 && savedVersion.isNotBlank()) {
-                    if (latestUpdate != null && latestUpdate.versionName != savedVersion) {
+                    // Already installed this version? Clear and move on
+                    val currentVersion = packageManager.getPackageInfo(packageName, 0).versionName
+                    if (savedVersion == currentVersion) {
+                        try { getSystemService(DownloadManager::class.java).remove(savedDownloadId) } catch (_: Exception) {}
+                        prefs.clearPendingUpdate()
+                    } else if (latestUpdate != null && latestUpdate.versionName != savedVersion) {
                         // Newer version exists, discard old APK
                         try { getSystemService(DownloadManager::class.java).remove(savedDownloadId) } catch (_: Exception) {}
                         prefs.clearPendingUpdate()
