@@ -65,8 +65,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import com.raouf.grabit.domain.model.Download
 import com.raouf.grabit.domain.model.DownloadStatus
 import com.raouf.grabit.ui.components.DownloadCard
@@ -563,6 +566,43 @@ fun HomeScreen(
                                         }
                                         context.startActivity(Intent.createChooser(shareIntent, "Share"))
                                     }
+                                },
+                                onCopyLink = {
+                                    val cm = context.getSystemService(ClipboardManager::class.java)
+                                    cm.setPrimaryClip(ClipData.newPlainText("url", download.url))
+                                    Toast.makeText(context, "Link copied", Toast.LENGTH_SHORT).show()
+                                },
+                                onOpenWith = {
+                                    download.filePath?.let { path ->
+                                        val uri = Uri.parse(path)
+                                        val mime = if (download.isAudioOnly) "audio/*" else "video/*"
+                                        val openIntent = Intent(Intent.ACTION_VIEW).apply {
+                                            setDataAndType(uri, mime)
+                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                        }
+                                        context.startActivity(Intent.createChooser(openIntent, "Open with"))
+                                    }
+                                },
+                                onOpenFolder = {
+                                    download.filePath?.let { path ->
+                                        try {
+                                            val fileUri = Uri.parse(path)
+                                            // Try to open the parent tree URI in a file manager
+                                            val treeUri = fileUri.buildUpon()
+                                                .path(fileUri.path?.substringBeforeLast("/"))
+                                                .build()
+                                            val folderIntent = Intent(Intent.ACTION_VIEW).apply {
+                                                setDataAndType(treeUri, "resource/folder")
+                                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                            }
+                                            context.startActivity(Intent.createChooser(folderIntent, "Open folder"))
+                                        } catch (_: Exception) {
+                                            Toast.makeText(context, "No file manager found", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                },
+                                onRedownload = {
+                                    onNavigateToPreview(download.url)
                                 },
                             )
                         }

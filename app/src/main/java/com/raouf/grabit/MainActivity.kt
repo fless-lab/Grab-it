@@ -96,51 +96,77 @@ class MainActivity : FragmentActivity() {
 
         // Update check
         lifecycleScope.launch(Dispatchers.IO) {
-            // Check if a previously downloaded update is ready to install
+            // 1. Check for new version from server
+            val latestUpdate = updateChecker.check()
+
+            // 2. Check if a previously downloaded APK is still valid
             val savedDownloadId = prefs.pendingUpdateDownloadId.first()
             val savedVersion = prefs.pendingUpdateVersion.first()
+            var savedApkValid = false
+
             if (savedDownloadId > 0 && savedVersion.isNotBlank()) {
-                val dm = getSystemService(DownloadManager::class.java)
-                val query = DownloadManager.Query().setFilterById(savedDownloadId)
-                val cursor = dm.query(query)
-                if (cursor != null && cursor.moveToFirst()) {
-                    val status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
-                    if (status == DownloadManager.STATUS_SUCCESSFUL) {
-                        // APK already downloaded, propose install
-                        pendingUpdate = AppUpdate(savedVersion, "", "")
-                        updateDownloadId = savedDownloadId
-                        updateReady = true
+                // If a newer version exists, discard old APK
+                if (latestUpdate != null && latestUpdate.versionName != savedVersion) {
+                    val dm = getSystemService(DownloadManager::class.java)
+                    dm.remove(savedDownloadId)
+                    prefs.clearPendingUpdate()
+                } else {
+                    // Check if APK file still exists
+                    val dm = getSystemService(DownloadManager::class.java)
+                    val query = DownloadManager.Query().setFilterById(savedDownloadId)
+                    val cursor = dm.query(query)
+                    if (cursor != null && cursor.moveToFirst()) {
+                        val status = cursor.getInt(
+                            cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS),
+                        )
+                        val localUri = cursor.getString(
+                            cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_LOCAL_URI),
+                        )
                         cursor.close()
-                        return@launch
+                        if (status == DownloadManager.STATUS_SUCCESSFUL && localUri != null) {
+                            // Verify file actually exists on disk
+                            val file = try { java.io.File(Uri.parse(localUri).path!!) } catch (_: Exception) { null }
+                            if (file?.exists() == true) {
+                                pendingUpdate = AppUpdate(savedVersion, "", "")
+                                updateDownloadId = savedDownloadId
+                                updateReady = true
+                                savedApkValid = true
+                            } else {
+                                // File was deleted manually
+                                dm.remove(savedDownloadId)
+                                prefs.clearPendingUpdate()
+                            }
+                        } else {
+                            cursor.close()
+                            prefs.clearPendingUpdate()
+                        }
+                    } else {
+                        cursor?.close()
+                        prefs.clearPendingUpdate()
                     }
-                    cursor.close()
                 }
-                // Download no longer valid, clear it
-                prefs.clearPendingUpdate()
             }
 
-            // Check for new version (always, even if auto-update is off)
-            val update = updateChecker.check() ?: return@launch
+            // 3. If saved APK is still valid, we're done
+            if (savedApkValid) return@launch
+
+            // 4. No valid saved APK, use latest from server
+            val update = latestUpdate ?: return@launch
             pendingUpdate = update
 
             val autoUpdateEnabled = prefs.autoUpdate.first()
-            if (!autoUpdateEnabled) {
-                // Just show banner, don't auto-download
-                return@launch
-            }
+            if (!autoUpdateEnabled) return@launch // show banner only
 
-            // Auto-download silently
+            // 5. Auto-download
             updateDownloading = true
             updateDownloadId = startApkDownload(
                 this@MainActivity, update.apkUrl, update.versionName,
             )
-            // Register completion listener
             downloadReceiver = registerDownloadReceiver(
                 this@MainActivity, updateDownloadId,
             ) {
                 updateDownloading = false
                 updateReady = true
-                // Persist so we can propose install on next launch
                 lifecycleScope.launch(Dispatchers.IO) {
                     prefs.setPendingUpdate(updateDownloadId, update.versionName)
                 }
@@ -212,9 +238,8 @@ class MainActivity : FragmentActivity() {
                             onClick = {
                                 if (updateReady) {
                                     installApk(this@MainActivity, updateDownloadId)
-                                    lifecycleScope.launch(Dispatchers.IO) {
-                                        prefs.clearPendingUpdate()
-                                    }
+                                    // Don't clear pending update here:
+                                    // if install fails (signature mismatch), user can retry next launch
                                 } else if (!updateDownloading && update.apkUrl.isNotBlank()) {
                                     // Manual download (auto-update off)
                                     updateDownloading = true

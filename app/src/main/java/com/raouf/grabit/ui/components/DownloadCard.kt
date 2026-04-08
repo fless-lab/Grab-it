@@ -3,7 +3,8 @@ package com.raouf.grabit.ui.components
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,23 +20,34 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AudioFile
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Error
+import androidx.compose.material.icons.rounded.FolderOpen
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.VideoFile
 import androidx.compose.material.icons.rounded.VisibilityOff
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -45,6 +57,7 @@ import com.raouf.grabit.domain.model.DownloadStatus
 import com.raouf.grabit.ui.theme.StatusError
 import com.raouf.grabit.ui.theme.StatusWarning
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun DownloadCard(
     download: Download,
@@ -57,6 +70,10 @@ fun DownloadCard(
     onDelete: () -> Unit = {},
     onHide: () -> Unit = {},
     onShare: () -> Unit = {},
+    onCopyLink: () -> Unit = {},
+    onOpenWith: () -> Unit = {},
+    onOpenFolder: () -> Unit = {},
+    onRedownload: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val animatedProgress by animateFloatAsState(
@@ -65,12 +82,18 @@ fun DownloadCard(
         label = "progress",
     )
 
+    var showMenu by remember { mutableStateOf(false) }
+
+    Box {
     Row(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surface)
-            .clickable(onClick = onClick)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = { showMenu = true },
+            )
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -309,6 +332,65 @@ fun DownloadCard(
             else -> {}
         }
     }
+
+    // Long press context menu
+    DropdownMenu(
+        expanded = showMenu,
+        onDismissRequest = { showMenu = false },
+    ) {
+        ContextMenuItem(Icons.Rounded.ContentCopy, "Copy link") {
+            showMenu = false; onCopyLink()
+        }
+        if (download.status == DownloadStatus.COMPLETED && download.filePath != null) {
+            ContextMenuItem(Icons.Rounded.Share, "Share") {
+                showMenu = false; onShare()
+            }
+            ContextMenuItem(Icons.Rounded.OpenInNew, "Open with...") {
+                showMenu = false; onOpenWith()
+            }
+            ContextMenuItem(Icons.Rounded.FolderOpen, "Open folder") {
+                showMenu = false; onOpenFolder()
+            }
+            ContextMenuItem(Icons.Rounded.Lock, "Move to Safe Zone") {
+                showMenu = false; onHide()
+            }
+        }
+        ContextMenuItem(Icons.Rounded.Refresh, "Re-download") {
+            showMenu = false; onRedownload()
+        }
+        ContextMenuItem(Icons.Rounded.Delete, "Delete", tint = StatusError) {
+            showMenu = false; onDelete()
+        }
+    }
+    } // Box
+}
+
+@Composable
+private fun ContextMenuItem(
+    icon: ImageVector,
+    label: String,
+    tint: Color? = null,
+    onClick: () -> Unit,
+) {
+    DropdownMenuItem(
+        text = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = tint ?: MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = tint ?: MaterialTheme.colorScheme.onSurface,
+                )
+            }
+        },
+        onClick = onClick,
+    )
 }
 
 private fun formatSpeed(bytesPerSec: Long): String = when {
