@@ -8,6 +8,9 @@
 -keep class com.chaquo.** { *; }
 -dontwarn com.chaquo.**
 
+# Apache Commons Compress (used by yt-dlp via reflection)
+-keep class org.apache.commons.compress.** { *; }
+
 # Room
 -keep class * extends androidx.room.RoomDatabase
 -keep class com.raouf.grabit.data.db.** { *; }
