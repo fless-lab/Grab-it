@@ -1,6 +1,8 @@
-# yt-dlp
+# yt-dlp + Python runtime (Chaquopy)
 -keep class com.yausername.youtubedl_android.** { *; }
 -keep class org.python.** { *; }
+-keep class com.chaquo.** { *; }
+-dontwarn com.chaquo.**
 
 # Room
 -keep class * extends androidx.room.RoomDatabase

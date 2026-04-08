@@ -34,7 +34,7 @@ class GrabitApp : Application() {
                 FFmpeg.getInstance().init(this@GrabitApp)
                 Log.d(TAG, "FFmpeg initialized successfully")
                 ytdlReady.complete(true)
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 Log.e(TAG, "yt-dlp init failed: ${e.message}", e)
                 ytdlReady.complete(false)
             }
