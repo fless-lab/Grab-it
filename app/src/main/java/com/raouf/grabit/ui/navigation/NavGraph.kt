@@ -115,25 +115,23 @@ fun GrabitNavGraph(
                     }
                 },
                 onDownloadClick = { download ->
-                    if (!download.isAudioOnly) {
-                        val isIncomplete = download.status in listOf(
-                            DownloadStatus.DOWNLOADING, DownloadStatus.PAUSED,
-                            DownloadStatus.WAITING_NETWORK, DownloadStatus.QUEUED,
-                            DownloadStatus.FAILED,
+                    val isIncomplete = download.status in listOf(
+                        DownloadStatus.DOWNLOADING, DownloadStatus.PAUSED,
+                        DownloadStatus.WAITING_NETWORK, DownloadStatus.QUEUED,
+                        DownloadStatus.FAILED,
+                    )
+                    if (isIncomplete && !download.isAudioOnly) {
+                        PlayerActivity.launch(
+                            context, download.filePath ?: "", download.title,
+                            streaming = true, videoUrl = download.url,
+                            isAudioOnly = false, thumbnail = download.thumbnail,
                         )
-                        if (isIncomplete) {
-                            // Stream from CDN (local file may lack audio track)
-                            PlayerActivity.launch(
-                                context, download.filePath ?: "", download.title,
-                                streaming = true, videoUrl = download.url,
-                            )
-                        } else if (download.filePath != null) {
-                            // Play local file, with CDN fallback if playback fails
-                            PlayerActivity.launch(
-                                context, download.filePath, download.title,
-                                streaming = false, videoUrl = download.url,
-                            )
-                        }
+                    } else if (download.filePath != null) {
+                        PlayerActivity.launch(
+                            context, download.filePath, download.title,
+                            streaming = false, videoUrl = download.url,
+                            isAudioOnly = download.isAudioOnly, thumbnail = download.thumbnail,
+                        )
                     }
                 },
                 onNavigateToPlaylistDetail = { playlistId ->
@@ -175,25 +173,23 @@ fun GrabitNavGraph(
             PlaylistDetailScreen(
                 onBack = { navController.popBackStack() },
                 onDownloadClick = { download ->
-                    if (!download.isAudioOnly) {
-                        val isIncomplete = download.status in listOf(
-                            DownloadStatus.DOWNLOADING, DownloadStatus.PAUSED,
-                            DownloadStatus.WAITING_NETWORK, DownloadStatus.QUEUED,
-                            DownloadStatus.FAILED,
+                    val isIncomplete = download.status in listOf(
+                        DownloadStatus.DOWNLOADING, DownloadStatus.PAUSED,
+                        DownloadStatus.WAITING_NETWORK, DownloadStatus.QUEUED,
+                        DownloadStatus.FAILED,
+                    )
+                    if (isIncomplete && !download.isAudioOnly) {
+                        PlayerActivity.launch(
+                            context, download.filePath ?: "", download.title,
+                            streaming = true, videoUrl = download.url,
+                            isAudioOnly = false, thumbnail = download.thumbnail,
                         )
-                        if (isIncomplete) {
-                            // Stream from CDN (local file may lack audio track)
-                            PlayerActivity.launch(
-                                context, download.filePath ?: "", download.title,
-                                streaming = true, videoUrl = download.url,
-                            )
-                        } else if (download.filePath != null) {
-                            // Play local file, with CDN fallback if playback fails
-                            PlayerActivity.launch(
-                                context, download.filePath, download.title,
-                                streaming = false, videoUrl = download.url,
-                            )
-                        }
+                    } else if (download.filePath != null) {
+                        PlayerActivity.launch(
+                            context, download.filePath, download.title,
+                            streaming = false, videoUrl = download.url,
+                            isAudioOnly = download.isAudioOnly, thumbnail = download.thumbnail,
+                        )
                     }
                 },
             )
@@ -219,8 +215,11 @@ fun GrabitNavGraph(
             com.raouf.grabit.ui.safezone.SafeZoneScreen(
                 onBack = { navController.popBackStack() },
                 onDownloadClick = { download ->
-                    if (!download.isAudioOnly && download.filePath != null) {
-                        PlayerActivity.launch(context, download.filePath, download.title)
+                    if (download.filePath != null) {
+                        PlayerActivity.launch(
+                            context, download.filePath, download.title,
+                            isAudioOnly = download.isAudioOnly, thumbnail = download.thumbnail,
+                        )
                     }
                 },
             )

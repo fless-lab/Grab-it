@@ -33,6 +33,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.ErrorOutline
@@ -87,15 +88,22 @@ class PlayerActivity : ComponentActivity() {
         private const val ACTION_PIP_REWIND = "com.raouf.grabit.PIP_REWIND"
         private const val SKIP_MS = 10_000L
 
-        /**
-         * Launch player for a completed/local file.
-         */
-        fun launch(context: Context, filePath: String, title: String, streaming: Boolean = false, videoUrl: String? = null) {
+        fun launch(
+            context: Context,
+            filePath: String,
+            title: String,
+            streaming: Boolean = false,
+            videoUrl: String? = null,
+            isAudioOnly: Boolean = false,
+            thumbnail: String? = null,
+        ) {
             context.startActivity(Intent(context, PlayerActivity::class.java).apply {
                 putExtra("filePath", filePath)
                 putExtra("title", title)
                 putExtra("streaming", streaming)
+                putExtra("isAudioOnly", isAudioOnly)
                 if (videoUrl != null) putExtra("videoUrl", videoUrl)
+                if (thumbnail != null) putExtra("thumbnail", thumbnail)
             })
         }
     }
@@ -135,6 +143,8 @@ class PlayerActivity : ComponentActivity() {
         val title = intent.getStringExtra("title") ?: "Video"
         val streaming = intent.getBooleanExtra("streaming", false)
         val videoUrl = intent.getStringExtra("videoUrl")
+        val isAudioOnly = intent.getBooleanExtra("isAudioOnly", false)
+        val thumbnail = intent.getStringExtra("thumbnail")
 
         // Register PiP action receiver
         val filter = IntentFilter().apply {
@@ -235,8 +245,8 @@ class PlayerActivity : ComponentActivity() {
             player.playWhenReady = true
         }
 
-        // Auto-enter PiP on Android 12+
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        // Auto-enter PiP on Android 12+ (video only)
+        if (!isAudioOnly && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             setPictureInPictureParams(
                 PictureInPictureParams.Builder()
                     .setAspectRatio(videoAspectRatio)
@@ -276,7 +286,7 @@ class PlayerActivity : ComponentActivity() {
                                 }
                             },
                             actions = {
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                if (!isAudioOnly && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                                     IconButton(onClick = { enterPip() }) {
                                         androidx.compose.material3.Icon(
                                             Icons.Rounded.PictureInPictureAlt,
@@ -357,6 +367,71 @@ class PlayerActivity : ComponentActivity() {
                                     }
                                 }
                             }
+                            isAudioOnly -> {
+                                // Audio player: thumbnail + controls
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(32.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center,
+                                ) {
+                                    // Thumbnail or music icon
+                                    Box(
+                                        modifier = Modifier
+                                            .size(200.dp)
+                                            .clip(RoundedCornerShape(16.dp))
+                                            .background(Color.White.copy(alpha = 0.1f)),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        if (thumbnail != null) {
+                                            coil.compose.AsyncImage(
+                                                model = thumbnail,
+                                                contentDescription = null,
+                                                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                                modifier = Modifier
+                                                    .matchParentSize()
+                                                    .clip(RoundedCornerShape(16.dp)),
+                                            )
+                                        } else {
+                                            androidx.compose.material3.Icon(
+                                                imageVector = androidx.compose.material.icons.Icons.Rounded.AudioFile,
+                                                contentDescription = null,
+                                                tint = Color.White.copy(alpha = 0.5f),
+                                                modifier = Modifier.size(80.dp),
+                                            )
+                                        }
+                                    }
+                                    Spacer(Modifier.height(24.dp))
+                                    Text(
+                                        text = title,
+                                        style = MaterialTheme.typography.titleLarge,
+                                        color = Color.White,
+                                        textAlign = TextAlign.Center,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                    Spacer(Modifier.height(32.dp))
+                                    // ExoPlayer controls (seek bar, play/pause)
+                                    AndroidView(
+                                        factory = { ctx ->
+                                            PlayerView(ctx).apply {
+                                                this.player = player
+                                                useController = true
+                                                setShowBuffering(PlayerView.SHOW_BUFFERING_ALWAYS)
+                                                setBackgroundColor(Color.Transparent.toArgb())
+                                                setShutterBackgroundColor(Color.Transparent.toArgb())
+                                                // Hide the video surface, only show controls
+                                                controllerShowTimeoutMs = 0
+                                                controllerHideOnTouch = false
+                                            }
+                                        },
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(80.dp),
+                                    )
+                                }
+                            }
                             else -> {
                                 AndroidView(
                                     factory = { ctx ->
@@ -403,6 +478,7 @@ class PlayerActivity : ComponentActivity() {
         request.addOption("-f", "best[ext=mp4]/best")
         request.addOption("--no-playlist")
         request.addOption("--no-check-certificates")
+        request.addOption("--socket-timeout", "10")
 
         val response = YoutubeDL.getInstance().execute(request)
         val url = response.out?.trim()?.lines()?.firstOrNull()
@@ -472,7 +548,8 @@ class PlayerActivity : ComponentActivity() {
 
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
-        if (Build.VERSION.SDK_INT in Build.VERSION_CODES.O until Build.VERSION_CODES.S) {
+        val audioOnly = intent.getBooleanExtra("isAudioOnly", false)
+        if (!audioOnly && Build.VERSION.SDK_INT in Build.VERSION_CODES.O until Build.VERSION_CODES.S) {
             if (exoPlayer?.isPlaying == true) {
                 enterPip()
             }
