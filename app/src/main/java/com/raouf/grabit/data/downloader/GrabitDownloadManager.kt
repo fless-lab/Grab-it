@@ -112,11 +112,25 @@ class GrabitDownloadManager @Inject constructor(
                 Log.d(TAG, "Starting download $id attempt $attempt/$MAX_RETRIES (pid=$pid): $title")
 
                 var tempPathSaved = false
+                var streamIndex = 0
+                var prevRawProgress = 0f
+                val hasAudio = !isAudioOnly && "+" in formatId
                 val response = YoutubeDL.getInstance().execute(
                     request, pid
                 ) { progress, eta, line ->
                     val rawPct = (progress / 100f).coerceIn(0f, 1f)
-                    val pct = maxOf(rawPct, lastProgress)
+                    // Detect stream switch (progress drops significantly)
+                    if (rawPct < prevRawProgress - 0.1f && hasAudio && streamIndex == 0) {
+                        streamIndex = 1
+                    }
+                    prevRawProgress = rawPct
+                    // Map to total: video=0-50%, audio=50-100% (or 0-100% for single stream)
+                    val totalPct = if (hasAudio) {
+                        (streamIndex * 0.5f + rawPct * 0.5f).coerceIn(0f, 1f)
+                    } else {
+                        rawPct
+                    }
+                    val pct = maxOf(totalPct, lastProgress)
                     lastProgress = pct
                     val speed = parseSpeed(line)
                     onProgress(pct)

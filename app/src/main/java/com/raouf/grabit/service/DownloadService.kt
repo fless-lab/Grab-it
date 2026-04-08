@@ -112,6 +112,7 @@ class DownloadService : Service() {
         when (intent?.action) {
             ACTION_QUICK -> {
                 val url = intent.getStringExtra(EXTRA_URL) ?: return START_NOT_STICKY
+                Log.d(TAG, "Quick download requested: $url")
                 scope.launch {
                     updateNotification("Downloading...")
 
@@ -120,8 +121,10 @@ class DownloadService : Service() {
                     var success = false
                     for (attempt in 1..3) {
                         try {
+                            Log.d(TAG, "Quick extract attempt $attempt/3")
                             val info = extractor.extract(url, forceRefresh = attempt > 1)
-                            repository.createDownload(
+                            Log.d(TAG, "Quick extract success: ${info.title}")
+                            val id = repository.createDownload(
                                 url = info.url,
                                 title = info.title,
                                 thumbnail = info.thumbnail,
@@ -130,18 +133,21 @@ class DownloadService : Service() {
                                 quality = "Best",
                                 formatId = "bestvideo+bestaudio/best",
                             )
+                            Log.d(TAG, "Quick download created: id=$id")
                             success = true
                             break
                         } catch (e: Exception) {
+                            Log.e(TAG, "Quick extract attempt $attempt failed: ${e.message}")
                             lastError = e
                             if (attempt < 3) kotlinx.coroutines.delay(3000)
                         }
                     }
 
                     if (success) {
+                        Log.d(TAG, "Quick download starting queue processing")
                         processQueue()
                     } else {
-                        Log.e(TAG, "Quick download failed: ${lastError?.message}", lastError)
+                        Log.e(TAG, "Quick download failed after 3 attempts: ${lastError?.message}", lastError)
                         showErrorNotification(
                             "Download failed: ${com.raouf.grabit.data.downloader.ErrorParser.friendlyMessage(lastError?.message)}"
                         )
