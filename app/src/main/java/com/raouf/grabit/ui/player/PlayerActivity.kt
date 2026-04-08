@@ -175,44 +175,26 @@ class PlayerActivity : ComponentActivity() {
         exoPlayer = player
 
         if (streaming && videoUrl != null) {
-            // Streaming mode: extract CDN URL, fallback to local file on error
+            // Streaming mode: CDN only (local temp file lacks audio during download)
             player.addListener(object : Player.Listener {
                 override fun onPlayerError(error: PlaybackException) {
-                    if (!fallbackAttempted && filePath.isNotBlank()) {
-                        Log.w(TAG, "Stream playback failed, trying local file: ${error.message}")
-                        fallbackAttempted = true
-                        val uri = buildFileUri(filePath)
-                        player.setMediaItem(MediaItem.fromUri(uri))
-                        player.prepare()
-                        player.playWhenReady = true
-                    } else {
-                        playbackError = "Playback error: ${error.localizedMessage}"
-                    }
+                    Log.e(TAG, "Stream playback error: ${error.message}")
+                    playbackError = "Stream error, try again later"
                 }
             })
             isLoading = true
             scope.launch {
                 try {
                     val streamUrl = extractStreamUrl(videoUrl)
-                    Log.d(TAG, "Streaming from CDN (muxed, should have audio)")
+                    Log.d(TAG, "Streaming from CDN")
                     player.setMediaItem(MediaItem.fromUri(Uri.parse(streamUrl)))
                     player.prepare()
                     player.playWhenReady = true
                     isLoading = false
                 } catch (e: Exception) {
                     Log.e(TAG, "Stream URL extraction failed: ${e.message}")
-                    if (filePath.isNotBlank()) {
-                        Log.w(TAG, "Falling back to local temp file (may lack audio during download)")
-                        fallbackAttempted = true
-                        val uri = buildFileUri(filePath)
-                        player.setMediaItem(MediaItem.fromUri(uri))
-                        player.prepare()
-                        player.playWhenReady = true
-                        isLoading = false
-                    } else {
-                        isLoading = false
-                        playbackError = "Stream unavailable, try again later"
-                    }
+                    isLoading = false
+                    playbackError = "Stream unavailable, try again later"
                 }
             }
         } else {
