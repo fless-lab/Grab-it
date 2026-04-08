@@ -119,11 +119,24 @@ class MainActivity : FragmentActivity() {
                                 val status = cursor.getInt(
                                     cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS),
                                 )
-                                if (status == DownloadManager.STATUS_SUCCESSFUL) {
-                                    pendingUpdate = AppUpdate(savedVersion, "", "")
-                                    updateDownloadId = savedDownloadId
-                                    updateReady = true
-                                    savedApkValid = true
+                                val localUri = cursor.getString(
+                                    cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_LOCAL_URI),
+                                )
+                                if (status == DownloadManager.STATUS_SUCCESSFUL && localUri != null) {
+                                    // Verify file actually exists on disk
+                                    val file = try {
+                                        java.io.File(Uri.parse(localUri).path!!)
+                                    } catch (_: Exception) { null }
+                                    if (file?.exists() == true) {
+                                        pendingUpdate = AppUpdate(savedVersion, "", "")
+                                        updateDownloadId = savedDownloadId
+                                        updateReady = true
+                                        savedApkValid = true
+                                    } else {
+                                        // File was deleted manually
+                                        try { dm.remove(savedDownloadId) } catch (_: Exception) {}
+                                        prefs.clearPendingUpdate()
+                                    }
                                 } else {
                                     prefs.clearPendingUpdate()
                                 }
