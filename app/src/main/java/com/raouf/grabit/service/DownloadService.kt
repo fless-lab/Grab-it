@@ -139,7 +139,7 @@ class DownloadService : Service() {
                         } catch (e: Exception) {
                             Log.e(TAG, "Quick extract attempt $attempt failed: ${e.message}")
                             lastError = e
-                            if (attempt < 3) kotlinx.coroutines.delay(3000)
+                            if (attempt < 3) kotlinx.coroutines.delay(1500)
                         }
                     }
 

@@ -91,6 +91,7 @@ class GrabitDownloadManager @Inject constructor(
                 request.addOption("--continue")
                 request.addOption("--no-check-certificates")
                 request.addOption("--no-mtime")
+                request.addOption("--socket-timeout", "10")
 
                 if (isAudioOnly) {
                     request.addOption("-x")

@@ -55,6 +55,7 @@ class VideoExtractor @Inject constructor() {
         request.addOption("--no-download")
         request.addOption("--no-playlist")
         request.addOption("--no-check-certificates")
+        request.addOption("--socket-timeout", "10")
 
         val response = try {
             YoutubeDL.getInstance().execute(request)
@@ -334,10 +335,10 @@ class VideoExtractor @Inject constructor() {
 
         val request = YoutubeDLRequest(url)
         request.addOption("--get-url")
-        // Prefer a single muxed stream (video+audio) for direct playback
         request.addOption("-f", "best[ext=mp4]/best")
         request.addOption("--no-playlist")
         request.addOption("--no-check-certificates")
+        request.addOption("--socket-timeout", "10")
 
         val response = YoutubeDL.getInstance().execute(request)
         val streamUrl = response.out?.trim()?.lines()?.firstOrNull()
