@@ -386,6 +386,13 @@ fun BrowserScreen(
                                         currentUrl = it
                                         urlBarText = it
                                     }
+                                    // YouTube ad skip (only on YouTube)
+                                    val u = url?.lowercase() ?: ""
+                                    if ("youtube.com" in u || "youtu.be" in u) {
+                                        view?.evaluateJavascript(
+                                            AdBlocker.getYouTubeAdSkipScript(), null,
+                                        )
+                                    }
                                 }
 
                                 override fun doUpdateVisitedHistory(
@@ -399,6 +406,12 @@ fun BrowserScreen(
                                         urlBarText = it
                                         canGoBack = view?.canGoBack() ?: false
                                         canGoForward = view?.canGoForward() ?: false
+                                    }
+                                    val u = url?.lowercase() ?: ""
+                                    if ("youtube.com" in u) {
+                                        view?.evaluateJavascript(
+                                            AdBlocker.getYouTubeAdSkipScript(), null,
+                                        )
                                     }
                                 }
 
