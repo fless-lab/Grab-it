@@ -1,7 +1,9 @@
 package com.raouf.grabit.ui.onboarding
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -20,8 +22,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.Notifications
-import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -60,6 +62,21 @@ fun OnboardingScreen(
         contract = ActivityResultContracts.RequestPermission(),
     ) { granted ->
         notifGranted = granted
+    }
+
+    var folderSelected by remember { mutableStateOf(false) }
+
+    val dirPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree(),
+    ) { uri: Uri? ->
+        uri?.let {
+            context.contentResolver.takePersistableUriPermission(
+                it,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+            )
+            onFolderSelected(it.toString())
+            folderSelected = true
+        }
     }
 
     val needsNotifPermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
@@ -151,7 +168,7 @@ fun OnboardingScreen(
             Spacer(Modifier.height(16.dp))
         }
 
-        // Storage info
+        // Storage folder (optional)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -163,23 +180,36 @@ fun OnboardingScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
-                Icons.Rounded.CheckCircle,
+                if (folderSelected) Icons.Rounded.CheckCircle else Icons.Rounded.Folder,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
+                tint = if (folderSelected) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(24.dp),
             )
             Spacer(Modifier.width(12.dp))
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Storage",
+                    text = if (folderSelected) "Folder selected" else "Save location",
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onBackground,
                 )
                 Text(
-                    text = "Downloads saved to Downloads/Grabit",
+                    text = if (folderSelected) "Custom folder set" else "Default: Downloads/Grabit",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+            if (!folderSelected) {
+                Button(
+                    onClick = { dirPicker.launch(null) },
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                    ),
+                ) {
+                    Text("Change", style = MaterialTheme.typography.labelMedium)
+                }
             }
         }
 
