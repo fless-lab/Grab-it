@@ -128,8 +128,11 @@ fun GrabitNavGraph(
                                 streaming = true, videoUrl = download.url,
                             )
                         } else if (download.filePath != null) {
-                            // Play from local file (completed, has both tracks)
-                            PlayerActivity.launch(context, download.filePath, download.title)
+                            // Play local file, with CDN fallback if playback fails
+                            PlayerActivity.launch(
+                                context, download.filePath, download.title,
+                                streaming = false, videoUrl = download.url,
+                            )
                         }
                     }
                 },
@@ -185,8 +188,11 @@ fun GrabitNavGraph(
                                 streaming = true, videoUrl = download.url,
                             )
                         } else if (download.filePath != null) {
-                            // Play from local file (completed/failed with partial file)
-                            PlayerActivity.launch(context, download.filePath, download.title)
+                            // Play local file, with CDN fallback if playback fails
+                            PlayerActivity.launch(
+                                context, download.filePath, download.title,
+                                streaming = false, videoUrl = download.url,
+                            )
                         }
                     }
                 },

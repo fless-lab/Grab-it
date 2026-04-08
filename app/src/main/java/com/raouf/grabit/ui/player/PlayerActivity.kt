@@ -208,7 +208,29 @@ class PlayerActivity : ComponentActivity() {
                 }
             }
         } else {
-            // Normal mode: play from local file
+            // Normal mode: play from local file, fallback to CDN on error
+            player.addListener(object : Player.Listener {
+                override fun onPlayerError(error: PlaybackException) {
+                    if (!isFallbackAttempt && videoUrl != null) {
+                        Log.w(TAG, "Local playback failed, trying CDN: ${error.message}")
+                        isFallbackAttempt = true
+                        playbackError = null
+                        isLoading = true
+                        scope.launch {
+                            try {
+                                val streamUrl = extractStreamUrl(videoUrl)
+                                player.setMediaItem(MediaItem.fromUri(Uri.parse(streamUrl)))
+                                player.prepare()
+                                player.playWhenReady = true
+                                isLoading = false
+                            } catch (e: Exception) {
+                                isLoading = false
+                                playbackError = "Playback error: ${error.localizedMessage}"
+                            }
+                        }
+                    }
+                }
+            })
             val uri = buildFileUri(filePath)
             player.setMediaItem(MediaItem.fromUri(uri))
             player.prepare()
