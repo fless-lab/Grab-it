@@ -94,12 +94,41 @@ class MainActivity : FragmentActivity() {
             prefs.darkTheme.collect { isDarkTheme = it }
         }
 
-        // Silent update check (respects user preference)
+        // Update check
         lifecycleScope.launch(Dispatchers.IO) {
-            val autoUpdateEnabled = prefs.autoUpdate.first()
-            if (!autoUpdateEnabled) return@launch
+            // Check if a previously downloaded update is ready to install
+            val savedDownloadId = prefs.pendingUpdateDownloadId.first()
+            val savedVersion = prefs.pendingUpdateVersion.first()
+            if (savedDownloadId > 0 && savedVersion.isNotBlank()) {
+                val dm = getSystemService(DownloadManager::class.java)
+                val query = DownloadManager.Query().setFilterById(savedDownloadId)
+                val cursor = dm.query(query)
+                if (cursor != null && cursor.moveToFirst()) {
+                    val status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
+                    if (status == DownloadManager.STATUS_SUCCESSFUL) {
+                        // APK already downloaded, propose install
+                        pendingUpdate = AppUpdate(savedVersion, "", "")
+                        updateDownloadId = savedDownloadId
+                        updateReady = true
+                        cursor.close()
+                        return@launch
+                    }
+                    cursor.close()
+                }
+                // Download no longer valid, clear it
+                prefs.clearPendingUpdate()
+            }
+
+            // Check for new version (always, even if auto-update is off)
             val update = updateChecker.check() ?: return@launch
             pendingUpdate = update
+
+            val autoUpdateEnabled = prefs.autoUpdate.first()
+            if (!autoUpdateEnabled) {
+                // Just show banner, don't auto-download
+                return@launch
+            }
+
             // Auto-download silently
             updateDownloading = true
             updateDownloadId = startApkDownload(
@@ -111,6 +140,10 @@ class MainActivity : FragmentActivity() {
             ) {
                 updateDownloading = false
                 updateReady = true
+                // Persist so we can propose install on next launch
+                lifecycleScope.launch(Dispatchers.IO) {
+                    prefs.setPendingUpdate(updateDownloadId, update.versionName)
+                }
             }
             // Poll progress
             val dm = getSystemService(DownloadManager::class.java)
@@ -171,7 +204,7 @@ class MainActivity : FragmentActivity() {
                     val update = pendingUpdate
                     if (update != null) {
                         UpdateBanner(
-                            visible = updateDownloading || updateReady,
+                            visible = true,
                             downloading = updateDownloading,
                             ready = updateReady,
                             versionName = update.versionName,
@@ -179,6 +212,42 @@ class MainActivity : FragmentActivity() {
                             onClick = {
                                 if (updateReady) {
                                     installApk(this@MainActivity, updateDownloadId)
+                                    lifecycleScope.launch(Dispatchers.IO) {
+                                        prefs.clearPendingUpdate()
+                                    }
+                                } else if (!updateDownloading && update.apkUrl.isNotBlank()) {
+                                    // Manual download (auto-update off)
+                                    updateDownloading = true
+                                    lifecycleScope.launch(Dispatchers.IO) {
+                                        updateDownloadId = startApkDownload(
+                                            this@MainActivity, update.apkUrl, update.versionName,
+                                        )
+                                        downloadReceiver = registerDownloadReceiver(
+                                            this@MainActivity, updateDownloadId,
+                                        ) {
+                                            updateDownloading = false
+                                            updateReady = true
+                                            lifecycleScope.launch(Dispatchers.IO) {
+                                                prefs.setPendingUpdate(updateDownloadId, update.versionName)
+                                            }
+                                        }
+                                        val dm = getSystemService(DownloadManager::class.java)
+                                        while (updateDownloading) {
+                                            val query = DownloadManager.Query().setFilterById(updateDownloadId)
+                                            val cursor = dm.query(query)
+                                            if (cursor != null && cursor.moveToFirst()) {
+                                                val downloaded = cursor.getLong(
+                                                    cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR),
+                                                )
+                                                val total = cursor.getLong(
+                                                    cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES),
+                                                )
+                                                if (total > 0) updateProgress = downloaded.toFloat() / total
+                                                cursor.close()
+                                            }
+                                            delay(500)
+                                        }
+                                    }
                                 }
                             },
                             modifier = Modifier

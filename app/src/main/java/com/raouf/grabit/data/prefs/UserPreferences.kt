@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -32,6 +33,8 @@ class UserPreferences @Inject constructor(
         val SKIPPED_VERSION_TAG = stringPreferencesKey("skipped_version_tag")
         val AUTO_UPDATE = booleanPreferencesKey("auto_update")
         val WIFI_ONLY = booleanPreferencesKey("wifi_only")
+        val PENDING_UPDATE_DOWNLOAD_ID = longPreferencesKey("pending_update_download_id")
+        val PENDING_UPDATE_VERSION = stringPreferencesKey("pending_update_version")
     }
 
     val downloadDirUri: Flow<String?> = context.dataStore.data.map { it[Keys.DOWNLOAD_DIR_URI] }
@@ -93,5 +96,22 @@ class UserPreferences @Inject constructor(
 
     suspend fun setWifiOnly(enabled: Boolean) {
         context.dataStore.edit { it[Keys.WIFI_ONLY] = enabled }
+    }
+
+    val pendingUpdateDownloadId: Flow<Long> = context.dataStore.data.map { it[Keys.PENDING_UPDATE_DOWNLOAD_ID] ?: -1L }
+    val pendingUpdateVersion: Flow<String> = context.dataStore.data.map { it[Keys.PENDING_UPDATE_VERSION] ?: "" }
+
+    suspend fun setPendingUpdate(downloadId: Long, version: String) {
+        context.dataStore.edit {
+            it[Keys.PENDING_UPDATE_DOWNLOAD_ID] = downloadId
+            it[Keys.PENDING_UPDATE_VERSION] = version
+        }
+    }
+
+    suspend fun clearPendingUpdate() {
+        context.dataStore.edit {
+            it.remove(Keys.PENDING_UPDATE_DOWNLOAD_ID)
+            it.remove(Keys.PENDING_UPDATE_VERSION)
+        }
     }
 }
