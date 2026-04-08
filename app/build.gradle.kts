@@ -8,6 +8,15 @@ plugins {
     alias(libs.plugins.firebase.crashlytics)
 }
 
+// Auto-version from git tag: "v1.2.0" → versionName "1.2.0", versionCode from commit count
+fun gitVersionName(): String =
+    providers.exec { commandLine("git", "describe", "--tags", "--abbrev=0") }
+        .standardOutput.asText.get().trim().removePrefix("v").ifBlank { "1.0.0" }
+
+fun gitVersionCode(): Int =
+    providers.exec { commandLine("git", "rev-list", "--count", "HEAD") }
+        .standardOutput.asText.get().trim().toIntOrNull() ?: 1
+
 android {
     namespace = "com.raouf.grabit"
     compileSdk = 35
@@ -16,8 +25,8 @@ android {
         applicationId = "com.raouf.grabit"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = gitVersionCode()
+        versionName = gitVersionName()
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
