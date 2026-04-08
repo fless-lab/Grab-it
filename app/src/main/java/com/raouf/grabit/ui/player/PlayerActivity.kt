@@ -36,6 +36,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.AudioFile
 import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.PictureInPictureAlt
 import androidx.compose.material3.CircularProgressIndicator
@@ -397,7 +398,7 @@ class PlayerActivity : ComponentActivity() {
                                             )
                                         } else {
                                             androidx.compose.material3.Icon(
-                                                imageVector = androidx.compose.material.icons.Icons.Rounded.AudioFile,
+                                                imageVector = Icons.Rounded.AudioFile,
                                                 contentDescription = null,
                                                 tint = Color.White.copy(alpha = 0.5f),
                                                 modifier = Modifier.size(80.dp),
