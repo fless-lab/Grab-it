@@ -144,6 +144,11 @@ fun GrabitNavGraph(
         ) {
             PreviewScreen(
                 onBack = { navController.popBackStack() },
+                onDownloadStarted = {
+                    navController.navigate(Routes.HOME) {
+                        popUpTo(Routes.HOME) { inclusive = true }
+                    }
+                },
             )
         }
 

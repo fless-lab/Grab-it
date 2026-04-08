@@ -59,6 +59,7 @@ import com.raouf.grabit.ui.player.PlayerActivity
 @Composable
 fun PreviewScreen(
     onBack: () -> Unit,
+    onDownloadStarted: () -> Unit = onBack,
     viewModel: PreviewViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -134,10 +135,10 @@ fun PreviewScreen(
             }
 
             state.downloadStarted -> {
-                // Auto-navigate back to home when download starts
+                // Auto-navigate to home when download starts
                 LaunchedEffect(Unit) {
                     kotlinx.coroutines.delay(600)
-                    onBack()
+                    onDownloadStarted()
                 }
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
