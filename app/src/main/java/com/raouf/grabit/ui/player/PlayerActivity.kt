@@ -193,6 +193,7 @@ class PlayerActivity : ComponentActivity() {
             scope.launch {
                 try {
                     val streamUrl = extractStreamUrl(videoUrl)
+                    Log.d(TAG, "Streaming from CDN (muxed, should have audio)")
                     player.setMediaItem(MediaItem.fromUri(Uri.parse(streamUrl)))
                     player.prepare()
                     player.playWhenReady = true
@@ -200,6 +201,7 @@ class PlayerActivity : ComponentActivity() {
                 } catch (e: Exception) {
                     Log.e(TAG, "Stream URL extraction failed: ${e.message}")
                     if (filePath.isNotBlank()) {
+                        Log.w(TAG, "Falling back to local temp file (may lack audio during download)")
                         fallbackAttempted = true
                         val uri = buildFileUri(filePath)
                         player.setMediaItem(MediaItem.fromUri(uri))
@@ -208,7 +210,7 @@ class PlayerActivity : ComponentActivity() {
                         isLoading = false
                     } else {
                         isLoading = false
-                        playbackError = "Cannot play: no connection and no local file"
+                        playbackError = "Stream unavailable, try again later"
                     }
                 }
             }
